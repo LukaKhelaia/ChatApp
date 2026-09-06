@@ -5,7 +5,11 @@ over a persistent WebSocket connection rather than by polling. Built with
 ASP.NET Core 8 on the server and vanilla ES modules in the browser — no
 front-end framework.
 
-**Live demo:** _(add the Render URL here after the first deploy)_
+**Live demo:** https://chatapp-oi2a.onrender.com
+
+> Hosted on Render's free tier, which sleeps after 15 minutes of inactivity —
+> the first request after a quiet spell takes about a minute to wake the
+> container. Everything is normal speed after that.
 
 ---
 
