@@ -721,9 +721,120 @@ body.profile-page > footer {
 
 /* ------------------------------------------------------------ responsive -- */
 @media (max-width: 560px) {
+    /* The card dissolves into the page.
+
+       At 460px wide the panel is a panel: it sits on the pattern with room
+       around it and reads as an object. At 390px there is no room around it -
+       the border ends up a few pixels from each edge of the screen and stops
+       looking like a card, it looks like a box someone drew around the phone.
+
+       So below this width the frame goes: no background, no border, no
+       shadow, no corner radius. The whole screen becomes the form. What keeps
+       it from turning into loose text on a wallpaper is that the fields carry
+       the structure instead - each one still has its own raised surface and
+       outline, and the button is still solid pink, so it stays obvious what
+       you type into and what you press. */
+    /* Keep the form vertically centred - align-items comes from the base
+       rule. Only the padding shrinks, because the 40px that gave the card
+       breathing room is now just a gap above a heading. */
+    body.auth-page > .container {
+        padding: 24px 0 40px;
+    }
+
     .auth-page .col-md-4 {
-        padding: 26px 20px;
-        border-radius: 16px;
+        padding: 8px 20px 28px;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* Underline fields, not filled boxes.
+
+       A filled 56px slab is a lot of surface for a phone, and four of them
+       stacked is most of the screen painted in one flat colour. Strip each
+       field down to the line it is typed on: no fill, no box, just a rule
+       under the text. The page then reads as text on a page, and the only
+       filled thing left is the button - which is the one thing you press.
+
+       The horizontal padding goes with the box. A line needs no inset, and
+       without this the text would start 14px in from a rule that begins at
+       the edge. The floating label has to lose the same padding or it sits
+       off to the right of the value it labels. */
+    .auth-page .form-control {
+        padding-left: 0;
+        padding-right: 0;
+        background: transparent;
+        border: none;
+        border-bottom: 1.5px solid rgba(255, 255, 255, .17);
+        border-radius: 0;
+    }
+
+    .auth-page .form-floating > label {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Focus is the line lighting up. The 3px glow that reads as a ring around
+       a box just smears under a single rule, so it goes. */
+    .auth-page .form-control:focus {
+        background: transparent;
+        border-bottom-color: var(--pink);
+        box-shadow: none;
+    }
+
+    /* Chrome paints its own slab behind an autofilled field, which would put
+       the box straight back. An inset shadow the size of the field is the
+       only thing that overrides it. */
+    .auth-page .form-control:-webkit-autofill,
+    .auth-page .form-control:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--text);
+        box-shadow: inset 0 0 0 100px var(--bg);
+        transition: background-color 9999s ease-out;
+    }
+
+    /* Without a fill to separate them, the fields need the gap to do it. */
+    .auth-page .form-floating.mb-3,
+    .auth-page .reset-step .form-control {
+        margin-bottom: 1.35rem;
+    }
+
+    /* The heading's rule was there to divide the title from the card's
+       contents. Next to four underlined fields it reads as a fifth one, so
+       on this width the heading separates itself. */
+    .auth-page h1 + hr,
+    .auth-page h2 + hr {
+        display: none;
+    }
+
+    /* "Register as a new user" was a filled slab, which was right when the
+       fields were filled slabs too. Now it would be the second most solid
+       thing on the screen after the button it sits under. As a plain line of
+       text it goes back to being the quieter of the two choices. */
+    .auth-page form p a {
+        padding: 6px 0 0;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        font-weight: 500;
+    }
+
+    /* The button stays a solid block - it is the one control that is pressed
+       rather than typed into, and that difference should be visible without
+       reading anything. */
+
+    .auth-page .btn-lg {
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    /* This rule separated the heading from the card's contents. With the card
+       gone it is a line straight across the screen, so soften it. */
+    .auth-page h1 + hr,
+    .auth-page h2 + hr,
+    .auth-page hr {
+        margin: 12px 0 20px;
+        opacity: .55;
     }
 
     /* The label column is sized for "PASSWORD"; on a narrow card it can give

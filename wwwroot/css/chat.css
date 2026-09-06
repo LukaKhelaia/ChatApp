@@ -181,9 +181,15 @@
     transition: border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
 
-#currentUserAvatar:hover {
-    border-color: var(--pink);
-    transform: scale(1.05);
+/* Hover only where hovering is a real thing. A tap on a touch screen leaves
+   :hover latched on the element until you touch something else, so on a phone
+   this ring appeared the moment you opened the drawer and then simply stayed -
+   which is the "pink border that should not be there". */
+@media (hover: hover) and (pointer: fine) {
+    #currentUserAvatar:hover {
+        border-color: var(--pink);
+        transform: scale(1.05);
+    }
 }
 
 #currentUserNickname {
@@ -3054,5 +3060,14 @@
 @media (hover: none) {
     .msg-actions {
         opacity: .55;
+    }
+}
+
+/* No ring on the avatar either. The border stays declared at 2px transparent
+   on wider screens so hovering cannot shift the row; here there is nothing to
+   shift and nothing to show. */
+@media (max-width: 860px) {
+    #currentUserAvatar {
+        border: none;
     }
 }
