@@ -1,0 +1,242 @@
+﻿@{
+    ViewData["Title"] = "Chat";
+    // drives class="chat-page" on <html>/<body> in _Layout, which is what the
+    // full-screen shell in chat.css hangs off. Other pages leave it unset.
+    ViewData["PageClass"] = "chat-page";
+    var username = User.Identity?.Name ?? "Anonymous";
+}
+
+@*
+    The one value the page's script needs from the server. The script lives in
+    static .js files now, which Razor never sees, so it is stamped here and
+    read back with dataset.username.
+*@
+<div id="chatBootstrap" data-username="@(User?.Identity?.Name ?? "")" hidden></div>
+
+<!-- Friend-request bell. Fixed to the top bar, just left of the profile icon. -->
+<div id="friendBell" class="friend-bell" title="Friend requests">
+    <button id="friendBellBtn" class="friend-bell-btn" aria-label="Friend requests">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+            <path d="M12 22a2.2 2.2 0 0 0 2.2-2.2H9.8A2.2 2.2 0 0 0 12 22zm7-5.3v-5.2c0-3.2-1.7-5.9-4.7-6.6v-.7a2.3 2.3 0 0 0-4.6 0v.7C6.7 5.6 5 8.3 5 11.5v5.2L3 18.7v1h18v-1l-2-2z" />
+        </svg>
+        <span id="friendBellBadge" class="friend-bell-badge"></span>
+    </button>
+    <div id="friendRequestsPanel" class="friend-requests-panel">
+        <div class="friend-requests-head">Friend requests</div>
+        <div id="friendRequestsBody"></div>
+    </div>
+</div>
+
+<div class="row1 chat-row">
+
+    <!--Users information-->
+    <div class="chat-container">
+        <div class="col-md-4 chat-list">
+            <div class="d-flex align-items-center mb-2">
+                <img id="currentUserAvatar" src="/images/default-avatar.png" alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%;margin-left: 20px;" />
+                <div id="currentUserNickname" class="text-white fw-bold" style="font-size: 20px;">
+                    Loading...
+                </div>
+            </div>
+
+            <!--Chats list and search for users-->
+            <div class="search-wrap">
+                <input type="text" id="searchBox" class="form-control" placeholder="Search by name or email" />
+                <button type="button" id="clearSearch" class="search-clear" aria-label="Clear search" title="Clear"></button>
+            </div>
+            <ul id="userList" class="list-group mb-3"></ul>
+
+            <div class="chats-groups">
+                <div class="chat-toggle" data-section="privateChats">💬 Chats<svg class="chat-toggle-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.2 12 14.7l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+                <ul id="privateChats" class="list-group collapsible-list mb-3"></ul>
+
+                <div class="chat-toggle" data-section="groupChats">👥 Groups<svg class="chat-toggle-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.2 12 14.7l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+                <ul id="groupChats" class="list-group collapsible-list mb-3"></ul>
+
+                <div class="chat-toggle" data-section="friendsList">🤝 Friends<svg class="chat-toggle-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.2 12 14.7l5.5-5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+                <ul id="friendsList" class="list-group collapsible-list mb-3"></ul>
+            </div>
+            <button id="createGroupBtn" class="btn createBtn mt-3">➕ Create Group</button>
+        </div>
+
+        <!--Chat section-->
+        <div class="col-md-8 chat-area">
+            <button id="toggleSidebarBtn" class="hamburger-btn">☰</button>
+            <div id="chatHeader" style="display: none; justify-content: space-between; align-items: center; background-color: #1e1e1e;">
+                <h4><span id="chatWith"></span></h4>
+
+                <!-- Three dots menu -->
+                <div class="dropdown">
+                    <button id="chatOptionsBtn" class="chat-three-dots" title="Options" aria-label="Chat options">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                            <circle cx="5" cy="12" r="1.9" />
+                            <circle cx="12" cy="12" r="1.9" />
+                            <circle cx="19" cy="12" r="1.9" />
+                        </svg>
+                    </button>
+                    <ul id="chatOptionsMenu" class="dropdown-menu" style="display: none; position: absolute; right: 10px; top: 40px; z-index: 10;">
+                        <li><button id="viewMembersBtn" class="dropdown-item"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M3.2 19c0-3 2.6-4.8 5.8-4.8s5.8 1.8 5.8 4.8"/><circle cx="17" cy="8.6" r="2.6"/><path d="M17 13.6c2.4 0 4 1.4 4 3.4"/></svg><span>Members</span></button></li>
+                        <li><button id="addMemberBtn" class="dropdown-item"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.4"/><path d="M4.2 19c0-3 2.6-4.8 5.8-4.8 1 0 1.9.2 2.7.5"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg><span>Add Members</span></button></li>
+                        <li><button id="leaveGroupBtn" class="dropdown-item text-danger"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H14"/><path d="M17.5 8.5 21 12l-3.5 3.5"/><path d="M21 12h-9"/></svg><span>Leave Group</span></button></li>
+                        <li><button id="manageContactBtn" class="dropdown-item"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="3.4"/><path d="M3.7 19c0-3 2.6-4.8 5.8-4.8"/><circle cx="17.5" cy="16.5" r="2.2"/><path d="M17.5 12.9v1.4M17.5 18.7v1.4M14.4 14.7l1.2.7M19.4 17.6l1.2.7M20.6 14.7l-1.2.7M15.6 17.6l-1.2.7"/></svg><span>Manage contact</span></button></li>
+                        <li><button id="deleteChatBtn" class="dropdown-item text-danger"><svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15"/><path d="M9.5 6.5V4.8h5v1.7"/><path d="M6.8 6.5 7.8 20h8.4l1-13.5"/><path d="M10.4 10v6.4M13.6 10v6.4"/></svg><span>Delete Chat</span></button></li>
+                    </ul>
+                </div>
+            </div>
+            <!--Shown until a conversation is picked: no message list, no composer-->
+            <div id="chatWelcome" class="chat-welcome">
+                <div class="chat-welcome-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3C6.98 3 3 6.58 3 11c0 2.3 1.1 4.36 2.87 5.79-.1 1.2-.5 2.6-1.5 3.79 0 0 2.65-.3 4.62-1.85A11 11 0 0 0 12 19c5.02 0 9-3.58 9-8s-3.98-8-9-8z" />
+                    </svg>
+                </div>
+                <h1 class="chat-welcome-title">ChatApp</h1>
+                <p class="chat-welcome-tagline">Real-time messaging with the people who matter.</p>
+                <p class="chat-welcome-hint">Pick a conversation to start messaging, or search for someone to add as a friend.</p>
+            </div>
+
+            <!--Messages area-->
+            <div id="chatBox" class="chat-box"></div>
+
+            <!--Covers the message pane while history is being fetched-->
+            <div id="chatLoading" class="chat-loading" aria-hidden="true">
+                <div class="chat-spinner"></div>
+            </div>
+            @* "X is typing", live only - nothing behind this is ever stored *@
+            <div id="typingStrip" class="typing-strip" aria-live="polite">
+                <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span id="typingText" class="typing-text"></span>
+            </div>
+
+            <div id="composerNotice" class="composer-notice">
+                You are not friends with this user, so you can't send messages.
+            </div>
+            <!--The message being replied to, if any-->
+            <div id="composerReply" class="composer-reply"></div>
+
+            <!--The photo/file waiting to be sent with the next message-->
+            <div id="composerAttachment" class="composer-attachment"></div>
+
+            <div class="input-with-icon">
+                <div class="attach-wrap">
+                    <button type="button" id="attachBtn" class="attach-btn" title="Attach a photo or file" aria-label="Attach a photo or file" aria-haspopup="true" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+                    </button>
+                    <div id="attachMenu" class="attach-menu" role="menu">
+                        <button type="button" class="attach-menu-item" data-attach="photo" role="menuitem">
+                            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /><circle cx="9" cy="10" r="1.6" fill="currentColor" /><path d="m5 17 4.5-4.5L13 16l2.5-2.5L19 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            Photo
+                        </button>
+                        <button type="button" class="attach-menu-item" data-attach="file" role="menuitem">
+                            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M13 3H7a1.6 1.6 0 0 0-1.6 1.6v14.8A1.6 1.6 0 0 0 7 21h10a1.6 1.6 0 0 0 1.6-1.6V8.6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /><path d="M13 3v5.6h5.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" /></svg>
+                            Document
+                        </button>
+                    </div>
+                </div>
+
+                <input type="file" id="photoPicker" class="visually-hidden-input" accept="image/jpeg,image/png,image/gif,image/webp" />
+                <input type="file" id="filePicker" class="visually-hidden-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" />
+
+                <textarea id="messageInput" rows="1" placeholder="Type a message"></textarea>
+                <button id="sendButton" class="send-icon-btn" title="Send">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ff1493" width="30" height="30">
+                        <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!--Creating new group chat modal-->
+        <div id="createGroupModal" class="modal" style="display:none;">
+            <div class="modal-create rounded">
+                <h4>Create Group</h4>
+                <input type="file" id="groupImageUpload" class="form-control mb-2" accept="image/*" />
+                <input type="text" id="groupNameInput" placeholder="Group name" class="form-control mb-2" />
+                <div class="suggestion-wrapper">
+                    <input type="text" id="groupUserSearch" placeholder="Search users to add" class="form-control mb-2" autocomplete="off" />
+                    <ul id="groupUserSuggestions" class="list-group"></ul>
+                </div>
+
+                <div id="selectedUsers" class="selected-user-list mb-2"></div>
+
+                <button id="confirmCreateGroup" class="btn btn-create">Create</button>
+                <span id="closeCreateModal" class="close">X</span>
+
+            </div>
+        </div>
+
+        <!--Showing group members modal-->
+        <div id="membersModal" class="modal">
+            <div class="modal-content">
+                <span id="closeMembersModal" class="close" style="position: absolute; right: 20px; top: 20px;">X</span>
+                <h3>Group Members</h3>
+                <div id="membersModalBody"></div>
+            </div>
+        </div>
+
+        <!--Manage contact: the relationship actions, kept out of the ⋯ menu
+            so a mis-click can't unfriend or block anyone-->
+        <div id="contactModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <button type="button" id="closeContactModal" class="close-edit-btn" aria-label="Close"></button>
+                <h3>Manage contact</h3>
+
+                <div class="contact-modal-user">
+                    <img id="contactModalAvatar" src="/images/default-avatar.png" alt="" />
+                    <span id="contactModalName"></span>
+                </div>
+
+                <p class="contact-modal-hint" id="contactModalHint">
+                    Blocking stops either of you sending messages. You stay friends, and you can unblock whenever you like.
+                </p>
+
+                <button type="button" id="blockBtn" class="contact-action danger">
+                    <svg class="contact-action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2l11.6 11.6"/></svg><span id="blockBtnLabel">Block</span>
+                </button>
+                <button type="button" id="unfriendBtn" class="contact-action danger">
+                    <svg class="contact-action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.4"/><path d="M4.2 19c0-3 2.6-4.8 5.8-4.8 1 0 1.9.2 2.7.5"/><path d="M14.5 16.5h6"/></svg><span>Unfriend</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Add members modal -->
+        <div id="addMembersModal" class="modal-overlay" style="display:none;">
+            <div class="modal-create rounded">
+                <h4>Add Members to Group</h4>
+
+                <input type="hidden" id="currentGroupId" />
+
+                <div class="suggestion-wrapper" style="position: relative;">
+                    <input type="text" id="memberUserSearch" placeholder="Search users to add" class="form-control mb-2" autocomplete="off" />
+                    <ul id="memberUserSuggestions" class="list-group"></ul>
+                </div>
+
+                <div id="memberSelectedUsers" class="selected-user-list mb-2"></div>
+
+                <button id="confirmAddMembers" class="btn btn-create">Add</button>
+                <button id="closeAddMembersModal" class="btn btn-secondary cancel-create">X</button>
+            </div>
+        </div>
+
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    </div>
+    
+
+</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
+}
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+@*
+    The chat page's script. One tag: chat-boot.js is the entry point and every
+    other file is reached through its imports, so there is no load order to get
+    wrong here any more - the module graph decides it.
+
+    type="module" also means these files are no longer served as classic
+    scripts, so nothing in them leaks into the global scope.
+*@
+    <script type="module" src="~/js/chat/chat-boot.js" asp-append-version="true"></script>
+}

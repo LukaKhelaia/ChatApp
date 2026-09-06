@@ -1,0 +1,34 @@
+# Render Blueprint. Commit this at the repo root, then in Render choose
+# "New +" -> "Blueprint" and point it at the GitHub repo.
+#
+# The database lives on Neon (free, does not expire) rather than Render's free
+# Postgres, which is deleted after 30 days.
+services:
+  - type: web
+    name: chatapp
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # sync:false means "ask me for this in the dashboard, do not keep it in
+      # git". Render prompts for every one of these when the blueprint is first
+      # applied, and they can be edited afterwards under Environment.
+
+      # Neon connection string, e.g.
+      #   postgresql://user:pass@ep-xxx-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+
+      # Password-reset mail. Without these the six-digit code is written to the
+      # Render log instead of being sent - the flow still works, it just is not
+      # something a stranger can use. See DEPLOYMENT.md.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

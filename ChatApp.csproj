@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	  <UserSecretsId>6f1a47a8-6ea0-4259-ae11-e815a7e67272</UserSecretsId>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.5" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.5" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.5" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.5" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.5">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.5" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
+	</ItemGroup>
+
+	<!-- The test project lives in Tests/ and builds on its own.
+	     Without this it would be swallowed by this project: an SDK-style
+	     csproj compiles **/*.cs under its own folder, so every test file would
+	     land in the web assembly and drag xunit in with it. That is the same
+	     trap a stray .cs file has sprung here before. -->
+	<ItemGroup>
+		<Compile Remove="Tests/**" />
+		<Content Remove="Tests/**" />
+		<None Remove="Tests/**" />
+		<EmbeddedResource Remove="Tests/**" />
+	</ItemGroup>
+
+	<!-- Scratch. Git ignores it, the COMPILER did not: the Razor SDK's
+	     **/*.cshtml glob was still picking up the dead pages parked in there
+	     and building them into the app. -->
+	<ItemGroup>
+		<Compile Remove="_to_delete/**" />
+		<Content Remove="_to_delete/**" />
+		<None Remove="_to_delete/**" />
+		<EmbeddedResource Remove="_to_delete/**" />
+	</ItemGroup>
+
+</Project>

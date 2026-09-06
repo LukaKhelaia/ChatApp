@@ -1,0 +1,3058 @@
+/* ============================================================================
+   ChatApp - chat page styles
+   Full-viewport app shell. Same dark + pink identity, rebuilt around a
+   proper layout instead of a centred card.
+
+   Every class the client JS generates is styled here:
+     .list-group-item .chat-avatar .chat-image .unread-dot(.active)
+     .chat-avatar-small .chat-avatar-spacer
+     .received-message .received-group-message .sent-message
+     .text-end > div (Bootstrap .bg-primary.rounded-pill from the JS)
+     .create-selected-user .member .member-avatar
+     .collapsible-list(.open) .chat-toggle
+   ========================================================================= */
+
+:root {
+    --bg:          #000000;   /* app background                       */
+    --panel:       #0b0b0e;   /* sidebar                              */
+    --surface:     #050507;   /* message area                         */
+    --raised:      #18181d;   /* bubbles, inputs, hovers              */
+    --raised-hi:   #222228;   /* hover on raised                      */
+    --line:        #1c1c22;   /* borders - deliberately not pure black,
+                                 or the panels lose their separation  */
+
+    --pink:        #ff1493;
+    --pink-soft:   #ff69b4;
+    --pink-dim:    rgba(255, 20, 147, .16);
+
+    --text:        #f2f2f5;
+    --text-dim:    #9a9aa8;
+
+    --radius:      14px;
+    --radius-lg:   18px;
+
+    /* Sidebar sections scroll internally after this many rows, so a long
+       Chats list can't bury Groups and Friends below it. A row is 64px
+       (40px avatar + 2x10px padding + 2x2px margin); .5 leaves a half row
+       peeking so it reads as scrollable. */
+    --list-row-h:       64px;
+    --list-rows-shown:  5.5;
+    /* A friend-request row is shorter than a sidebar row (34px avatar +
+       2x8px padding), so it gets its own height but the same row count. */
+    --req-row-h:        50px;
+    --speed:       .18s;
+    --ease:        cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ---------------------------------------------------------------- shell -- */
+/* Neutralise the centred-card rules coming from site.css / _Layout. */
+.chat-page,
+.chat-page body {
+    height: 100%;
+}
+
+.chat-page {
+    margin: 0;
+    display: block;
+    /* --app-h is the height the shell fills. It starts as the viewport height,
+       upgrades to dvh where supported, and on a phone the visualViewport
+       listener in Chat.cshtml overwrites it with the height NOT covered by the
+       on-screen keyboard - that is what keeps the composer above the keyboard
+       instead of behind it. */
+    height: var(--app-h, 100vh);
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* dvh shrinks with the browser UI (and, on Android Chrome, with the keyboard)
+   where the JS hook is unavailable. vh above stays as the fallback. */
+@supports (height: 100dvh) {
+    .chat-page {
+        height: var(--app-h, 100dvh);
+    }
+}
+
+.chat-page .container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.chat-page main {
+    padding: 0 !important;
+}
+
+.chat-page footer {
+    display: none;          /* the shell owns the full viewport */
+}
+
+.chat-page header .navbar {
+    background: var(--panel) !important;
+    /* !important: the markup carries Bootstrap's .border-bottom utility, whose
+       own rule is !important and paints a light #dee2e6 line across the top. */
+    border-bottom: 1px solid var(--line) !important;
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+    padding: 0 20px;
+    min-height: 56px;
+}
+
+.chat-page .navbar-brand {
+    font-size: 22px !important;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: var(--pink-soft) !important;
+    transition: color var(--speed) var(--ease);
+}
+
+.chat-page .navbar-brand:hover {
+    color: var(--pink) !important;
+}
+
+/* row1 / chat-container are the existing wrappers in Chat.cshtml */
+.row1 {
+    display: flex;
+    width: 100%;
+    height: calc(var(--app-h, 100vh) - 56px);
+    padding: 0;
+    margin: 0;
+    background: var(--bg);
+    min-height: 0;
+}
+
+.chat-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.chat-row {
+    display: flex;
+    width: 100%;
+    gap: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* -------------------------------------------------------------- sidebar -- */
+/* .col-md-4 / .col-md-8 are Bootstrap grid classes the markup reuses.
+   Scoped under .chat-page so they only apply on this screen. */
+.chat-page .col-md-4,
+.chat-page .chat-list {
+    flex: 0 0 330px;
+    width: 330px;
+    max-width: 330px;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    border-radius: 0;
+    box-shadow: none !important;
+    padding: 0;
+    color: var(--text);
+    z-index: 20;
+}
+
+/* current user strip */
+.chat-list > .d-flex:first-child {
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--line);
+    flex: 0 0 auto;
+}
+
+#currentUserAvatar {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 0 !important;
+    border: 2px solid transparent;
+    transition: border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+#currentUserAvatar:hover {
+    border-color: var(--pink);
+    transform: scale(1.05);
+}
+
+#currentUserNickname {
+    font-size: 17px !important;
+    font-weight: 600;
+    color: var(--text);
+    background: none;
+    border-radius: 0;
+    padding: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* search */
+#searchBox {
+    flex: 0 0 auto;
+    margin: 14px 18px 10px !important;
+    width: auto !important;
+}
+
+.chat-page .form-control {
+    background: var(--raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 15px;
+    width: 100%;
+    margin-left: 0;
+    transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+
+.chat-page .form-control::placeholder {
+    color: var(--text-dim);
+}
+
+.chat-page .form-control:focus {
+    background: var(--raised-hi);
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-dim);
+    outline: none;
+}
+
+/* live user-search results */
+#userList {
+    margin: 0 18px 8px;
+    width: auto;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    max-height: 210px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+
+#userList:empty {
+    display: none;
+}
+
+/* scrollable middle of the sidebar */
+.chats-groups {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    background: transparent;
+    padding: 4px 0 8px;
+    border-radius: 0;
+}
+
+/* section headers */
+.chat-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    border-bottom: none;
+    padding: 14px 18px 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--speed) var(--ease);
+}
+
+.chat-toggle:hover {
+    background: transparent;
+    color: var(--pink-soft);
+}
+
+/* the rule that fills the space between the label and the chevron */
+.chat-toggle::after {
+    content: "";
+    order: 1;               /* the arrow is order 2, so the rule sits between */
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+    margin-left: 4px;
+}
+
+/* open/closed chevron, hard right. Points down while the section is closed and
+   flips up when it opens - .open is mirrored onto the header by
+   toggleSection(), because CSS has no previous-sibling selector. */
+.chat-toggle-arrow {
+    order: 2;
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    margin-left: 8px;
+    color: var(--text-dim);
+    transition: transform .3s cubic-bezier(.22, .61, .36, 1),
+                color var(--speed) var(--ease);
+}
+
+.chat-toggle:hover .chat-toggle-arrow {
+    color: var(--pink-soft);
+}
+
+.chat-toggle.open .chat-toggle-arrow {
+    transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-toggle-arrow {
+        transition: none;
+    }
+}
+
+/* collapsible lists - closed on load, opened by clicking a header */
+.collapsible-list {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0 !important;
+    opacity: 0;
+    /* ease-out rather than ease-in-out: the list should leave quickly and land
+       softly. toggleSection() animates to the real content height, so a short
+       list finishes early instead of coasting to the cap. */
+    transition: max-height .3s cubic-bezier(.22, .61, .36, 1),
+                opacity .24s var(--ease);
+}
+
+.collapsible-list.open {
+    opacity: 1;
+    max-height: calc(var(--list-row-h) * var(--list-rows-shown));
+    overflow-y: auto;
+    /* the row hover nudges 2px right; without this that would produce a
+       horizontal scrollbar */
+    overflow-x: hidden;
+}
+
+/* Set for the duration of the open/close animation by toggleSection().
+   Mid-transition the box is shorter than its content, which flashed a
+   scrollbar on every toggle regardless of how many rows the list has. */
+.collapsible-list.animating {
+    overflow-y: hidden;
+}
+
+.chat-page .list-group {
+    font-size: 15px;
+    width: 100%;
+    border-radius: 0;
+}
+
+/* chat rows */
+.chat-page .list-group-item,
+.chat-page .list-group-item-info {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent !important;
+    color: var(--text) !important;
+    border: none !important;
+    border-radius: 10px;
+    margin: 2px 10px;
+    padding: 10px 12px;
+    width: auto;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+/* the pink rail that slides in on hover */
+.chat-page .list-group-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    border-radius: 0 3px 3px 0;
+    background: var(--pink);
+    transform: translateY(-50%);
+    transition: height var(--speed) var(--ease);
+}
+
+.chat-page .list-group-item:hover,
+.chat-page .list-group-item-info:hover {
+    background: var(--raised) !important;
+    color: var(--text) !important;
+    transform: translateX(2px);
+}
+
+.chat-page .list-group-item:hover::before {
+    height: 62%;
+}
+
+.chat-page .list-group-item:active {
+    background: var(--raised-hi) !important;
+}
+
+/* Shortens a long nickname. :not(.avatar-wrap) because the presence dot's
+   wrapper is a span in this same row, and overflow:hidden on it cropped the
+   corner of the dot clean off. */
+.chat-page .list-group-item span:not(.avatar-wrap) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-avatar,
+.chat-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    display: block;
+    /* the avatar PNGs are transparent, so any fill here shows through as a
+       lighter disc behind the artwork - keep it dark */
+    background: transparent;
+    transition: transform var(--speed) var(--ease);
+}
+
+.chat-page .list-group-item:hover .chat-avatar,
+.chat-page .list-group-item:hover .chat-image {
+    transform: scale(1.06);
+}
+
+/* unread indicator */
+.unread-dot {
+    display: none;
+    width: 9px;
+    height: 9px;
+    background: var(--pink);
+    border-radius: 50%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 0 rgba(255, 20, 147, .55);
+}
+
+.unread-dot.active {
+    display: inline-block;
+    animation: unreadPulse 2s infinite;
+}
+
+@keyframes unreadPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 20, 147, .5); }
+    70%  { box-shadow: 0 0 0 7px rgba(255, 20, 147, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 20, 147, 0); }
+}
+
+/* create-group button pinned to the bottom of the sidebar */
+#createGroupBtn,
+.createBtn {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    padding: 13px 18px;
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--pink-soft);
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+#createGroupBtn:hover,
+/* A solid pink fill on hover was shouting louder than anything else in the
+   sidebar. A neutral raised surface plus a slightly brighter label is enough
+   to say "the mouse is here". */
+.createBtn:hover {
+    background: var(--raised);
+    color: var(--pink);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05);
+}
+
+.createBtn:active {
+    background: var(--raised-hi);
+}
+
+/* ------------------------------------------------------------ chat pane -- */
+.chat-page .col-md-8,
+/* the hamburger is a sibling of the header, so the height both of them are
+   measured from is declared on their shared parent */
+.chat-page .chat-area {
+    --chat-head-h: 64px;
+
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: none;
+    border-radius: 0;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none;
+    color: var(--text);
+    position: relative;
+}
+
+/* conversation header */
+#chatHeader {
+    /* the height itself is declared on .chat-area, which the hamburger is in
+       too - redeclaring it here would shadow that and let the two drift */
+    flex: 0 0 auto;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel) !important;
+    border-bottom: 1px solid var(--line);
+    padding: 0 18px;
+    min-height: var(--chat-head-h);
+}
+
+.chat-area h4,
+#chatHeader h4 {
+    display: flex;
+    align-items: center;
+    width: auto;
+    min-width: 0;           /* a long name must ellipsis, not push the ⋯ off */
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+#chatWith {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text) !important;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+#chatWith img {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* three-dots menu */
+/* Was a text "..." - periods sit on the baseline, so the glyphs rendered near
+   the bottom of the button even though the button itself was centred. An SVG
+   centres exactly, and matches the 38px box the bell and profile icon use. */
+.chat-three-dots {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.chat-three-dots:hover {
+    background: var(--raised);
+    color: var(--pink-soft);
+}
+
+.chat-page .dropdown-menu {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 190px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+}
+
+.chat-page .dropdown-item {
+    color: var(--text) !important;
+    background: transparent;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.chat-page .dropdown-item:hover {
+    background: var(--raised);
+    color: var(--pink-soft) !important;
+}
+
+.chat-page .dropdown-item.text-danger:hover {
+    background: rgba(220, 53, 69, .16);
+    color: #ff6b7a !important;
+}
+
+/* ------------------------------------------------------------- messages -- */
+.chat-box,
+#chatBox {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 22px 26px;
+    margin: 0;
+    /* the doodle tile - see the note in site.css */
+    background-color: var(--surface);
+    background-image: url("/images/chat-pattern.svg");
+    background-repeat: repeat;
+    background-size: 420px 420px;
+    border-radius: 0;
+    font-size: 15px;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+}
+
+/* push a short conversation to the bottom of the pane rather than the top.
+   margin-top:auto on the first row does this without breaking scrolling
+   once the conversation is long enough to overflow. */
+#chatBox > *:first-child {
+    margin-top: auto;
+}
+
+/* an open conversation with no messages in it yet. The "nothing picked at all"
+   case is the welcome panel below, not this. */
+#chatBox:empty::before {
+    content: "No messages yet - say hello";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 16px;
+}
+
+/* --- day separators ------------------------------------------------------ */
+/* One chip per day, inserted by ensureDaySeparator() before the first message
+   of each new day. */
+.day-separator {
+    flex: 0 0 auto;          /* same shrink trap as .message-meta */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 14px 0 10px;
+}
+
+.day-separator span {
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(11, 11, 14, .82);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    /* the doodle backdrop shows through a flat panel colour, so blur behind */
+    backdrop-filter: blur(2px);
+}
+
+/* --- the time on a message, revealed by clicking it ---------------------- */
+[data-sent-at] {
+    cursor: pointer;
+}
+
+/* The line lives OUTSIDE the bubble - anything inside it would inherit the
+   bubble's pink or grey fill. It slides open on click and collapses on the
+   second click; max-height rather than height because you cannot transition
+   to auto, and 40px is comfortably more than the single line ever needs. */
+.message-meta {
+    /* flex-shrink:0 is load-bearing, not tidiness. #chatBox is a flex column;
+       once a conversation overflows, flex shrinks its items - and because this
+       element sets overflow:hidden, its automatic minimum size is 0, so it is
+       the ONE item that can be squeezed flat. The margins survived, so the row
+       appeared to open by ~10px with no text in it. */
+    flex: 0 0 auto;
+    max-height: 0;
+    margin: 0 2px;
+    opacity: 0;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--text-dim);
+    white-space: nowrap;
+    transition: max-height .22s var(--ease),
+                opacity .18s var(--ease),
+                margin .22s var(--ease);
+}
+
+.message-meta.open {
+    max-height: 40px;
+    margin: 3px 2px 7px;
+    opacity: 1;
+}
+
+.message-meta.sent {
+    text-align: right;
+}
+
+/* Line up with the bubble, not the row: the avatar column is 30px avatar +
+   9px of its own margin + the row's 8px gap = 47px, less the 2px margin this
+   element already carries. */
+.message-meta.received {
+    text-align: left;
+    padding-left: 45px;
+}
+
+/* --- "seen by" avatars, Messenger style ---------------------------------- */
+/* One row of faces under the last message each person has read. Inserted by
+   placeReaderAvatar(); a reader only ever appears in one place, because the
+   old copy is removed before the new one is added. */
+.read-receipts {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 3px;
+}
+
+/* Under one of my own messages: a row of its own below the bubble, which is
+   where these have always sat. My bubbles run to the right edge, so the
+   weightless version below would sit on top of them. */
+.read-receipts.after-sent {
+    align-items: center;
+    margin: -1px 2px 6px 0;
+}
+
+/* Under someone else's: zero height, and the faces hang out of the top of it.
+   A row of its own here meant a 20px hole between two messages for as long as
+   that person had not caught up - and since sending is reading, that hole
+   followed people around the conversation. The right-hand side of a received
+   message is empty, so the faces live there for free, level with the bottom
+   of the last message that person has seen. */
+.read-receipts.after-received {
+    align-items: flex-end;
+    height: 0;
+    margin: 0 2px 0 0;
+    overflow: visible;
+    position: relative;
+    z-index: 3;
+}
+
+.read-avatar {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--surface);
+    background: var(--raised);
+}
+
+/* --- received ------------------------------------------------------------ */
+#chatBox .d-flex {
+    margin-bottom: 3px !important;
+    align-items: flex-end;
+}
+
+/* the name itself, so a long one shortens instead of growing the header -
+   and again, not the dot's wrapper */
+#chatHeader h4 span:not(.avatar-wrap) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-avatar-small {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    margin-right: 9px;
+    margin-bottom: 2px;
+}
+
+/* That 2px lifts the avatar onto a bubble's bottom edge in the message list.
+   In the header there is no bubble, and it just left the face sitting a pixel
+   above the name beside it. */
+#chatHeader .chat-avatar-small {
+    margin-bottom: 0;
+}
+
+.chat-avatar-spacer {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    margin-right: 9px;
+    display: inline-block;
+    background: transparent;
+}
+
+.received-message,
+.received-group-message {
+    background: var(--raised) !important;
+    color: var(--text) !important;
+    max-width: min(68%, 620px);
+    padding: 10px 15px !important;
+    border-radius: var(--radius-lg);
+    border-bottom-left-radius: 5px;   /* the "tail" corner */
+    font-size: 15px !important;
+    line-height: 1.45;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    transition: background var(--speed) var(--ease);
+}
+
+.received-message:hover,
+.received-group-message:hover {
+    background: var(--raised-hi) !important;
+}
+
+/* group bubbles stack a name label above the text */
+.received-group-message {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.received-group-message strong {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--pink-soft);
+    background: transparent !important;
+    margin-bottom: 3px;
+    letter-spacing: .02em;
+}
+
+.received-group-message p,
+.received-message p {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    border-radius: 0;
+    max-width: none;
+    display: block;
+    font-size: inherit;
+    color: inherit;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+/* --- sent ---------------------------------------------------------------- */
+/* One rule for both sent variants: the JS emits Bootstrap's
+   .bg-primary.rounded-pill for private chats and .sent-message for groups.
+   Styling the wrapper keeps both identical without touching the JS. */
+#chatBox .text-end {
+    margin-bottom: 3px !important;
+}
+
+#chatBox .text-end > div,
+.sent-message {
+    display: inline-block;
+    max-width: min(68%, 620px);
+    background: linear-gradient(135deg, var(--pink) 0%, #d81080 100%) !important;
+    color: #fff !important;
+    padding: 10px 15px !important;
+    border-radius: var(--radius-lg) !important;
+    border-bottom-right-radius: 5px !important;
+    font-size: 15px !important;
+    line-height: 1.45;
+    text-align: left;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    box-shadow: 0 2px 8px rgba(255, 20, 147, .22);
+    transition: filter var(--speed) var(--ease);
+}
+
+#chatBox .text-end > div:hover,
+.sent-message:hover {
+    filter: brightness(1.08);
+}
+
+/* ========================================================== attachments ==
+   The + button left of the composer, the menu it opens, the chip for the file
+   waiting to be sent, and how photos and files look inside a message bubble.
+   ======================================================================== */
+
+/* the two <input type="file"> elements are triggers only, never seen */
+.visually-hidden-input {
+    display: none !important;
+}
+
+.attach-wrap {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.attach-btn {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--raised);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
+                border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.attach-btn:hover:not(:disabled) {
+    background: var(--pink-dim);
+    border-color: rgba(255, 20, 147, .45);
+    color: var(--pink-soft);
+}
+
+.attach-btn:active:not(:disabled) {
+    transform: scale(.94);
+}
+
+.attach-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+/* opens upward - the composer is at the bottom of the screen */
+.attach-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    z-index: 40;
+    min-width: 168px;
+    padding: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+}
+
+.attach-menu.open {
+    display: block;
+    animation: attachMenuIn .15s var(--ease);
+}
+
+@keyframes attachMenuIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.attach-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.attach-menu-item:hover {
+    background: var(--raised);
+    color: var(--pink-soft);
+}
+
+/* --- the chip above the composer, while a file waits to be sent --------- */
+.composer-attachment {
+    display: none;
+    flex: 0 0 auto;
+    padding: 10px 20px 0;
+    background: var(--panel);
+}
+
+.composer-attachment.show {
+    display: block;
+    /* The divider normally lives on .input-with-icon. With the chip showing,
+       that line landed BETWEEN the chip and the input and cut the composer in
+       two, so the strip takes ownership of it instead. */
+    border-top: 1px solid var(--line);
+}
+
+.composer-attachment.show + .input-with-icon {
+    border-top-color: transparent;
+}
+
+.attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    max-width: 100%;
+    padding: 8px 10px 8px 13px;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    font-size: 13.5px;
+    color: var(--text);
+}
+
+.composer-attachment.error .attachment-chip {
+    border-color: rgba(220, 53, 69, .5);
+    background: rgba(220, 53, 69, .12);
+    color: #ff9aa5;
+}
+
+.attachment-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 340px;
+}
+
+.attachment-chip-size {
+    flex: 0 0 auto;
+    color: var(--text-dim);
+    font-size: 12.5px;
+}
+
+.attachment-chip-spinner {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 20, 147, .25);
+    border-top-color: var(--pink);
+    animation: chatSpin .7s linear infinite;
+}
+
+.attachment-chip-remove {
+    position: relative;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.attachment-chip-remove:hover {
+    background: rgba(220, 53, 69, .2);
+    color: var(--danger, #ff6b7a);
+}
+
+/* same two-bar cross as the profile modal - a glyph never centres exactly */
+.attachment-chip-remove::before,
+.attachment-chip-remove::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 11px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.attachment-chip-remove::before { transform: translate(-50%, -50%) rotate(45deg); }
+.attachment-chip-remove::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* --- attachments inside a message bubble ------------------------------- */
+/* A bubble carrying a photo drops the pill shape and most of its padding so
+   the image can sit almost edge to edge. */
+#chatBox .text-end > div.has-attachment,
+.sent-message.has-attachment,
+.received-message.has-attachment,
+.received-group-message.has-attachment {
+    padding: 6px !important;
+    border-radius: 16px !important;
+}
+
+.has-attachment .message-text {
+    display: block;
+    padding: 4px 9px 3px;
+}
+
+/* A photo fills its bubble corner to corner - the 6px of padding around it
+   read as a pink frame. overflow:hidden makes the bubble's own radius clip
+   the image, so the corners still match. */
+/* Specificity has to match the .has-attachment rule above, which is
+   #chatBox .text-end > div... - a bare .has-image loses to it even with
+   !important on both. */
+#chatBox .text-end > div.has-image,
+.sent-message.has-image,
+.received-message.has-image,
+.received-group-message.has-image {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.has-image .attachment-image {
+    border-radius: 0;
+}
+
+.has-image .message-text {
+    padding: 7px 12px 9px;
+}
+
+.has-image > strong {
+    padding: 8px 12px 0;
+}
+
+.has-attachment > strong {
+    padding: 2px 9px 0;
+}
+
+.attachment-image {
+    display: block;
+    line-height: 0;
+    border-radius: 11px;
+    overflow: hidden;
+}
+
+/* A photo that hasn't arrived yet still holds a box, so the pane doesn't
+   lurch as each one loads. The class is removed on load. */
+.attachment-image img.loading {
+    min-width: 180px;
+    min-height: 130px;
+    background: rgba(255, 255, 255, .05);
+}
+
+.attachment-image img {
+    display: block;
+    width: auto;
+    /* A plain px cap, NOT min(300px, 100%): inside a shrink-to-fit bubble the
+       100% is indefinite, so the browser falls back to the image's natural
+       width when sizing the bubble and then shrinks the image afterwards -
+       leaving a band of empty pink beside every photo. */
+    max-width: 300px;
+    max-height: 320px;
+    object-fit: cover;
+    transition: filter var(--speed) var(--ease);
+}
+
+.attachment-image:hover img {
+    filter: brightness(1.06);
+}
+
+.attachment-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 200px;
+    padding: 5px 6px;
+    border-radius: 11px;
+    /* No slab of its own: the card is the bubble. A darker panel inside a pink
+       bubble read as a border around a second, different-coloured box. */
+    background: transparent;
+    color: inherit !important;
+    text-decoration: none !important;
+    transition: background var(--speed) var(--ease);
+}
+
+.attachment-file:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+.attachment-file-icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .12);
+}
+
+.attachment-file-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.attachment-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.attachment-file-size {
+    font-size: 12px;
+    opacity: .72;
+}
+
+/* ------------------------------------------------- history spinner -- */
+/* Up between picking a conversation and its messages arriving. */
+.chat-loading {
+    display: none;
+    position: absolute;
+    inset: 64px 0 0;         /* below the conversation header */
+    place-items: center;
+    background-color: var(--surface);
+    background-image: url("/images/chat-pattern.svg");
+    background-repeat: repeat;
+    background-size: 420px 420px;
+    z-index: 5;
+}
+
+.history-loading .chat-loading {
+    display: grid;
+}
+
+/* while it is up, the "no messages yet" hint must not show through */
+.history-loading #chatBox:empty::before {
+    content: none;
+}
+
+.chat-spinner {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 20, 147, .22);
+    border-top-color: var(--pink);
+    animation: chatSpin .7s linear infinite;
+}
+
+@keyframes chatSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-spinner {
+        animation-duration: 2s;
+    }
+}
+
+/* ------------------------------------------------- welcome / no chat -- */
+/* Shown on first load and after a reload, until a conversation is opened.
+   body.no-chat-open is toggled in updateDeleteButtonVisibility(). */
+.chat-welcome {
+    display: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+    /* The welcome screen keeps the plain dark surface with a pink glow behind
+       the wordmark - no doodles here. It is the first thing anyone sees after
+       logging in, and the pattern competed with the logo. */
+    background:
+        radial-gradient(720px 340px at 50% 40%, rgba(255, 20, 147, .10), transparent 70%),
+        var(--surface);
+}
+
+.no-chat-open .chat-welcome {
+    display: flex;
+}
+
+/* nothing to type into until there is somewhere to send it */
+.no-chat-open #chatBox,
+.no-chat-open .composer-notice,
+.no-chat-open .composer-attachment,
+.no-chat-open .input-with-icon {
+    display: none !important;
+}
+
+.chat-welcome-icon {
+    width: 78px;
+    height: 78px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 20px;
+    border-radius: 50%;
+    background: var(--pink-dim);
+    border: 1px solid rgba(255, 20, 147, .3);
+}
+
+.chat-welcome-icon svg {
+    width: 38px;
+    height: 38px;
+    fill: var(--pink);
+}
+
+.chat-welcome-title {
+    margin: 0;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: .4px;
+    color: var(--pink-soft);
+}
+
+.chat-welcome-tagline {
+    margin: 12px 0 0;
+    font-size: 17px;
+    color: var(--text);
+}
+
+.chat-welcome-hint {
+    margin: 8px 0 0;
+    max-width: 420px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------- composer -- */
+.input-with-icon {
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+}
+
+.input-with-icon textarea,
+#messageInput {
+    flex: 1 1 auto;
+    resize: none;
+    /* One line at rest, exactly as tall as the send button next to it. The
+       auto-grow handler in Chat.cshtml raises the height as lines are added,
+       up to max-height; a bare <textarea> is 2 rows tall by default, which is
+       what made the empty composer look like a text area instead of a bar. */
+    height: 46px;
+    min-height: 46px;
+    max-height: 150px;
+    overflow-y: auto;
+    /* 22 line + 11 + 11 padding + 2 border = 46, i.e. exactly one line tall and
+       exactly as tall as the send button. Change these three together. */
+    line-height: 22px;
+    padding: 11px 16px;
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    background: var(--raised);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+
+#messageInput::placeholder {
+    color: var(--text-dim);
+}
+
+.input-with-icon textarea:focus,
+#messageInput:focus {
+    outline: none;
+    background: var(--raised-hi);
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-dim);
+}
+
+.send-icon-btn {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--pink);
+    cursor: pointer;
+    transition: transform var(--speed) var(--ease), background var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+
+.send-icon-btn svg {
+    width: 21px;
+    height: 21px;
+    fill: #fff;
+    transition: transform var(--speed) var(--ease);
+}
+
+.send-icon-btn:hover {
+    background: var(--pink-soft);
+    box-shadow: 0 4px 16px rgba(255, 20, 147, .45);
+    transform: translateY(-1px);
+}
+
+.send-icon-btn:hover svg {
+    transform: translateX(2px);
+}
+
+.send-icon-btn:active {
+    transform: scale(.94);
+}
+
+/* ------------------------------------------------------- chat ⋯ menu -- */
+/* The items used to be emoji. 🚫 in particular renders as a red disc with a
+   WHITE slash, which is why Unfriend looked like a block button and Block
+   would have looked wrong on a dark menu. These are strokes that inherit
+   currentColor, so a .text-danger row draws red on the menu's own black. */
+#chatOptionsMenu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 13px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--text);
+    font-size: 14.5px;
+    text-align: left;
+    white-space: nowrap;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+#chatOptionsMenu .dropdown-item:hover {
+    background: var(--raised);
+    color: var(--pink-soft);
+}
+
+#chatOptionsMenu .dropdown-item.text-danger {
+    color: var(--danger, #ff6b7a) !important;
+}
+
+#chatOptionsMenu .dropdown-item.text-danger:hover {
+    background: rgba(220, 53, 69, .16);
+    color: #ff8a95 !important;
+}
+
+.menu-icon {
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ----------------------------------------------- manage contact modal -- */
+/* Same shell as the Members modal: .modal + .modal-content, opened by setting
+   display:flex inline. Unfriend and Block live here rather than in the ⋯ menu,
+   so neither is one stray click away. */
+.contact-modal-user {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 13px;
+    margin-bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.contact-modal-user img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+
+.contact-modal-user span {
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.contact-modal-hint {
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-dim);
+}
+
+.contact-action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease),
+                color var(--speed) var(--ease);
+}
+
+.contact-action:last-child {
+    margin-bottom: 0;
+}
+
+.contact-action.danger {
+    color: var(--danger, #ff6b7a);
+}
+
+.contact-action.danger:hover {
+    background: rgba(220, 53, 69, .14);
+    border-color: rgba(220, 53, 69, .45);
+    color: #ff8a95;
+}
+
+/* Unblock reverses a block - it is not a destructive action, so not red. */
+.contact-action.is-unblock {
+    color: var(--text);
+}
+
+.contact-action.is-unblock:hover {
+    background: var(--raised);
+    border-color: var(--line);
+    color: var(--pink-soft);
+}
+
+.contact-action-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* --------------------------------------------------------------- modals -- */
+.modal,
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .68);
+    backdrop-filter: blur(3px);
+    padding: 20px;
+}
+
+/* the JS sets display:block / display:flex inline; centre either way */
+.modal[style*="block"],
+.modal-overlay[style*="block"] {
+    display: flex !important;
+}
+
+.modal-create,
+.modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    margin: auto;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+    animation: modalIn .22s var(--ease);
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(10px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+}
+
+.modal-create h4,
+.modal-content h3 {
+    margin: 0 0 18px;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.modal-create .form-control {
+    margin: 0 0 12px !important;
+    width: 100% !important;
+}
+
+.btn-create {
+    width: 100%;
+    padding: 11px;
+    margin-top: 6px;
+    border: none;
+    border-radius: 10px;
+    background: var(--pink);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.btn-create:hover {
+    background: var(--pink-soft);
+    transform: translateY(-1px);
+}
+
+.close,
+.cancel-create,
+#closeCreateModal,
+#closeAddMembersModal {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    /* The markup is a literal capital "X". Hidden, and the cross drawn from
+       two bars instead: a text glyph carries its own side bearings and sits
+       above the baseline, so it never lands dead centre in the square. Two
+       absolutely-centred bars are exact by construction - the same fix the
+       profile modal's close button already uses. */
+    font-size: 0;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 1;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.close::before,
+.close::after,
+.cancel-create::before,
+.cancel-create::after,
+#closeCreateModal::before,
+#closeCreateModal::after,
+#closeAddMembersModal::before,
+#closeAddMembersModal::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 13px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.close::before,
+.cancel-create::before,
+#closeCreateModal::before,
+#closeAddMembersModal::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close::after,
+.cancel-create::after,
+#closeCreateModal::after,
+#closeAddMembersModal::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.close:hover,
+.cancel-create:hover,
+#closeCreateModal:hover,
+#closeAddMembersModal:hover {
+    background: rgba(220, 53, 69, .18);
+    color: #ff6b7a;
+}
+
+/* user-picker suggestions inside the modals */
+.suggestion-wrapper {
+    position: relative;
+}
+
+#groupUserSuggestions,
+#memberUserSuggestions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 10;
+    max-height: 190px;
+    overflow-y: auto;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+}
+
+#groupUserSuggestions:empty,
+#memberUserSuggestions:empty {
+    display: none;
+    border: none;
+}
+
+.selected-user-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 4px 0 8px;
+}
+
+.create-selected-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--pink-dim);
+    color: var(--pink-soft);
+    border: 1px solid rgba(255, 20, 147, .35);
+    border-radius: 999px;
+    padding: 5px 8px 5px 12px;
+    font-size: 13px;
+    transition: background var(--speed) var(--ease);
+}
+
+.create-selected-user:hover {
+    background: rgba(255, 20, 147, .26);
+}
+
+.create-selected-user .btn-close {
+    width: .5em;
+    height: .5em;
+    padding: 0;
+    opacity: .8;
+}
+
+/* members list */
+.member {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    transition: background var(--speed) var(--ease);
+}
+
+.member:hover {
+    background: var(--raised);
+}
+
+.member-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.member-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Who holds what in this group. The owner's badge is the pink one - there is
+   only ever one of those, and only they can hand out the other. */
+.member-role {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--raised);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.member-role.owner {
+    border-color: rgba(255, 20, 147, .5);
+    background: var(--pink-dim);
+    color: var(--pink-soft);
+}
+
+.member-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;      /* pushed to the far edge, away from the name */
+    flex: 0 0 auto;
+}
+
+.member-btn {
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 4px 11px;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    color: var(--text);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease),
+                color var(--speed) var(--ease);
+}
+
+.member-btn:hover {
+    background: var(--raised-hi);
+    border-color: rgba(255, 20, 147, .45);
+}
+
+.member-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.member-btn.danger {
+    background: rgba(220, 53, 69, .18);
+    border-color: rgba(220, 53, 69, .45);
+    color: #ff6b7a;
+}
+
+.member-btn.danger:hover {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+}
+
+/* The group-image picker: the native control is a white slab on a dark modal.
+   Chromium does NOT apply the input's own padding to the position of the
+   file-selector button, so a padded input still drew the button hard against
+   the left border, looking like it had escaped the field. All the insetting
+   has to be done with margins on the button itself. The fixed height matches
+   the text inputs above and below it. */
+.modal-create input[type="file"] {
+    height: 44px;
+    padding: 0;
+    line-height: 42px;      /* centres "No file chosen" in a 42px content box */
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.modal-create input[type="file"]::file-selector-button {
+    /* 14px left margin lines the button up with the text in the other fields */
+    margin: 0 12px 0 14px;
+    vertical-align: middle;
+    padding: 5px 14px;
+    border: 1px solid rgba(255, 20, 147, .45);
+    border-radius: 8px;
+    background: var(--pink-dim);
+    color: var(--pink-soft);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.modal-create input[type="file"]::file-selector-button:hover {
+    background: var(--pink);
+    color: #fff;
+}
+
+/* ----------------------------------------------------------- scrollbars --
+   Chrome and Edge throw away every ::-webkit-scrollbar rule for an element as
+   soon as that same element also sets scrollbar-width or scrollbar-color, and
+   fall back to their built-in overlay scrollbar. Having both therefore gives
+   the WORSE of the two, so the standard properties are fenced off behind an
+   @supports test that only Firefox passes (Firefox is the one that does not
+   understand the ::-webkit-scrollbar selector). Chrome/Edge get the webkit
+   block below, Firefox gets the block above, neither gets both. */
+@supports not selector(::-webkit-scrollbar) {
+    .chats-groups,
+    .collapsible-list,
+    #friendRequestsBody,
+    #chatBox,
+    #userList,
+    #groupUserSuggestions,
+    #memberUserSuggestions {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 20, 147, .75) transparent;
+    }
+}
+
+.chats-groups::-webkit-scrollbar,
+.collapsible-list::-webkit-scrollbar,
+#friendRequestsBody::-webkit-scrollbar,
+#chatBox::-webkit-scrollbar,
+#userList::-webkit-scrollbar,
+#groupUserSuggestions::-webkit-scrollbar,
+#memberUserSuggestions::-webkit-scrollbar {
+    width: 10px;
+}
+
+.chats-groups::-webkit-scrollbar-track,
+.collapsible-list::-webkit-scrollbar-track,
+#friendRequestsBody::-webkit-scrollbar-track,
+#chatBox::-webkit-scrollbar-track,
+#userList::-webkit-scrollbar-track,
+#groupUserSuggestions::-webkit-scrollbar-track,
+#memberUserSuggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chats-groups::-webkit-scrollbar-thumb,
+.collapsible-list::-webkit-scrollbar-thumb,
+#friendRequestsBody::-webkit-scrollbar-thumb,
+#chatBox::-webkit-scrollbar-thumb,
+#userList::-webkit-scrollbar-thumb,
+#groupUserSuggestions::-webkit-scrollbar-thumb,
+#memberUserSuggestions::-webkit-scrollbar-thumb {
+    background: rgba(255, 20, 147, .75);
+    border-radius: 10px;
+    /* The border is transparent and clipped away from the background, so the
+       6px of visible pink sits in the middle of a 10px track. */
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background var(--speed) var(--ease);
+}
+
+/* The sidebar has two scrollbars side by side once the sections are full: the
+   section's own, and the outer one that scrolls between sections. Dim the
+   outer one at rest so they don't read as two equal bars. */
+.chats-groups::-webkit-scrollbar-thumb {
+    background: rgba(255, 20, 147, .38);
+    /* the shorthand above resets background-clip, so restate it */
+    background-clip: content-box;
+}
+
+.chats-groups::-webkit-scrollbar-thumb:hover,
+.collapsible-list::-webkit-scrollbar-thumb:hover,
+#friendRequestsBody::-webkit-scrollbar-thumb:hover,
+#chatBox::-webkit-scrollbar-thumb:hover,
+#userList::-webkit-scrollbar-thumb:hover,
+#groupUserSuggestions::-webkit-scrollbar-thumb:hover,
+#memberUserSuggestions::-webkit-scrollbar-thumb:hover {
+    background: var(--pink);
+    background-clip: content-box;
+}
+
+/* The composer is a 22px-radius pill. Chromium draws a scrollbar as a straight
+   bar inside the padding box, so at the rounded corner it pokes out past the
+   border - which is exactly what it looked like. The field is capped at 150px
+   and still scrolls with the wheel, the arrow keys and the caret, so the bar
+   itself is hidden rather than styled. */
+#messageInput {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#messageInput::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* ---------------------------------------------------------- presence -- */
+/* The dot rides on the corner of a face rather than sitting beside the name,
+   so it costs no width in a row that is already tight, and it reads the same
+   in the sidebar, the friends list and the chat header. The ring is the
+   surface behind it, which is what stops a green dot on a green avatar from
+   disappearing. */
+.avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+
+/* The wrapper has to be exactly the avatar and nothing more, because the dot
+   is anchored to its bottom-right corner. Any margin on the image lives inside
+   the wrapper, pushes that corner away from the face, and the dot ends up
+   floating in the gap next to it. Spacing is the wrapper's job now. */
+.avatar-wrap > img {
+    margin: 0;
+}
+
+#chatWith .avatar-wrap {
+    margin-right: 9px;
+}
+
+/* Sits fully INSIDE the wrapper - right/bottom 0, and the separating ring is
+   a border rather than an outward box-shadow. Both of those are deliberate:
+   anything that hangs outside the box is at the mercy of whatever ancestor
+   happens to clip, and this dot is drawn in a sidebar row, a chat header and a
+   friends list, each with its own overflow rules. The avatar is a circle, so a
+   dot tucked into the corner of its square box still reads as sitting on the
+   edge. */
+.presence-dot {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    border: 2px solid var(--panel);
+    border-radius: 50%;
+    background: #35d07f;
+    /* absent rather than grey: "offline" is the ordinary state and does not
+       need its own mark */
+    transform: scale(0);
+    opacity: 0;
+    transition: transform .18s var(--ease), opacity .18s var(--ease);
+}
+
+.avatar-wrap.online .presence-dot {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* the header sits on --panel too, so the ring colour already matches */
+
+/* --- the line under the name in the chat header --- */
+.chat-head-name {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+.chat-head-status {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-dim);
+    /* empty for groups, and an empty span must not leave a gap */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-head-status:empty {
+    display: none;
+}
+
+.chat-head-status.online {
+    color: #35d07f;
+}
+
+/* ------------------------------------------------------------ typing -- */
+/* A strip between the pane and the composer rather than a bubble inside the
+   message list: it is not a message, it must not scroll away, and keeping it
+   out of #chatBox means nothing that walks the message rows has to learn to
+   skip it.
+
+   Collapsed to nothing rather than display:none, so it can slide. */
+.typing-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-height: 0;
+    padding: 0 18px;
+    overflow: hidden;
+    opacity: 0;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    transition: max-height .18s var(--ease), opacity .18s var(--ease),
+                padding .18s var(--ease);
+}
+
+.typing-strip.show {
+    max-height: 30px;
+    padding: 4px 18px 6px;
+    opacity: 1;
+}
+
+.typing-text::after {
+    /* the ellipsis lives in CSS so the sentence itself stays translatable */
+    content: "\2026";
+}
+
+.typing-dots {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 10px;
+}
+
+.typing-dots i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--pink-soft);
+    animation: typingBounce 1.1s infinite ease-in-out;
+}
+
+/* Staggered, so the three read as one wave rather than three blinks. */
+.typing-dots i:nth-child(2) { animation-delay: .16s; }
+.typing-dots i:nth-child(3) { animation-delay: .32s; }
+
+@keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: .45; }
+    30%           { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .typing-dots i { animation: none; opacity: .8; }
+    .typing-strip { transition: none; }
+}
+
+/* ------------------------------------------------------ links in text -- */
+/* Colour is inherited so the link reads correctly on a pink bubble of my own
+   (white on pink) without a second rule; only the received side, which is
+   near-black, gets the site's pink. The underline is what marks it as a link
+   in both. */
+.message-link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+    /* a pasted URL must wrap inside the bubble rather than stretch it */
+    overflow-wrap: anywhere;
+}
+
+.received-message .message-link,
+.received-group-message .message-link {
+    color: var(--pink-soft);
+}
+
+.message-link:hover {
+    text-decoration-thickness: 2px;
+}
+
+/* --------------------------------------------------- older history --- */
+/* Sits at the top of the pane while the previous page is on its way. It is
+   removed before the page is spliced in, so it never counts towards the
+   scroll anchoring. */
+.history-more {
+    padding: 10px 0 14px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    text-align: center;
+    letter-spacing: .01em;
+}
+
+/* ------------------------------------------------------- mobile sidebar -- */
+/* The button floats over the header rather than sitting in it, because the
+   header is hidden until a conversation is open and the button has to work on
+   the welcome screen too. So its offset is derived from the header's own
+   height and its own size instead of being hand-tuned: --chat-head-h is the
+   single number both the header and this button are measured from, and they
+   cannot drift apart. */
+.hamburger-btn {
+    display: none;
+    position: absolute;
+    /* the -1px is the header's bottom border: min-height is a border-box
+       measurement, so the row the avatar and name centre on is a pixel
+       shorter than the header itself */
+    top: calc((var(--chat-head-h) - 1px - 38px) / 2);
+    left: 12px;
+    z-index: 12;            /* must stay below .sidebar-overlay (15) and .chat-list (20) */
+    opacity: 1;
+    transition: opacity var(--speed) var(--ease), background var(--speed) var(--ease);
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 9px;
+    background: var(--raised);
+    color: var(--pink-soft);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease);
+}
+
+.hamburger-btn:hover {
+    background: var(--pink);
+    color: #fff;
+}
+
+/* .chat-list and .chat-area are siblings in the markup, so this hides the
+   button as soon as the sidebar slides open. */
+.chat-list.active ~ .col-md-8 .hamburger-btn,
+.chat-list.active ~ .chat-area .hamburger-btn {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    background: rgba(0, 0, 0, .55);
+    opacity: 0;
+    transition: opacity var(--speed) var(--ease);
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* =============================== responsive =============================== */
+@media (max-width: 1100px) {
+    .chat-page .col-md-4,
+    .chat-page .chat-list {
+        flex-basis: 290px;
+        width: 290px;
+        max-width: 290px;
+    }
+}
+
+@media (max-width: 860px) {
+    .hamburger-btn {
+        display: grid;
+        place-items: center;
+    }
+
+    /* sidebar becomes a slide-over panel */
+    .chat-page .col-md-4,
+    .chat-page .chat-list {
+        position: fixed;
+        top: 56px;
+        bottom: 0;
+        left: 0;
+        width: 84vw;
+        max-width: 330px;
+        flex-basis: auto;
+        transform: translateX(-102%);
+        transition: transform .26s var(--ease);
+        box-shadow: 6px 0 30px rgba(0, 0, 0, .5) !important;
+    }
+
+    .chat-page .chat-list.active {
+        transform: translateX(0);
+    }
+
+    .chat-page .chat-area {
+        --chat-head-h: 60px;
+    }
+
+    #chatHeader {
+        padding-left: 60px;   /* clear the hamburger */
+    }
+
+    .chat-box,
+    #chatBox {
+        padding: 16px 14px;
+    }
+
+    .received-message,
+    .received-group-message,
+    #chatBox .text-end > div,
+    .sent-message {
+        max-width: 82%;
+    }
+
+    .input-with-icon {
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chat-page header .navbar {
+        padding: 0 12px;
+    }
+
+    .chat-page .navbar-brand {
+        font-size: 19px !important;
+    }
+
+    #chatWith {
+        font-size: 16px;
+    }
+
+    .received-message,
+    .received-group-message,
+    #chatBox .text-end > div,
+    .sent-message {
+        max-width: 88%;
+        font-size: 14.5px !important;
+    }
+
+    .send-icon-btn {
+        width: 42px;
+        height: 42px;
+    }
+
+    .chat-welcome-icon {
+        width: 66px;
+        height: 66px;
+        margin-bottom: 16px;
+    }
+
+    .chat-welcome-title {
+        font-size: 28px;
+    }
+
+    .chat-welcome-tagline {
+        font-size: 15px;
+    }
+
+    #messageInput {
+        /* 22 + 9 + 9 + 2 = 42, matching the smaller send button */
+        height: 42px;
+        min-height: 42px;
+        padding: 9px 14px;
+    }
+
+    .attach-btn {
+        width: 42px;
+        height: 42px;
+    }
+
+    .composer-attachment {
+        padding: 8px 12px 0;
+    }
+
+    .attachment-chip-name {
+        max-width: 180px;
+    }
+
+    .attachment-image img {
+        max-width: 220px;
+        max-height: 260px;
+    }
+}
+
+/* ==========================================================================
+   FRIENDS
+   Search-result actions, the friends list, and the request bell.
+   ========================================================================== */
+
+/* --- search results ---------------------------------------------------- */
+.search-result {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-result-name {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-tag {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--pink-dim);
+    color: var(--pink-soft);
+    border: 1px solid rgba(255, 20, 147, .35);
+}
+
+/* --- the search box's clear button --------------------------------------- */
+/* The spacing moves from the input to the wrapper. It has to: the button is
+   positioned against the wrapper, and while #searchBox carried its own 18px
+   side margins the button sat 9px OUTSIDE the field it belongs to. */
+.search-wrap {
+    position: relative;
+    flex: 0 0 auto;                /* the sidebar is a flex column */
+    margin: 14px 18px 10px;
+}
+
+.search-wrap #searchBox {
+    margin: 0 !important;
+    width: 100% !important;
+    padding-right: 40px;           /* room for the button, so a long term
+                                      never runs underneath it */
+}
+
+.search-clear {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: none;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.search-clear.show {
+    display: block;
+}
+
+/* the same two-bar cross as every other close control here - a text glyph
+   never centres in its own box */
+.search-clear::before,
+.search-clear::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 11px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.search-clear::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.search-clear::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.search-clear:hover {
+    background: rgba(220, 53, 69, .18);
+    color: #ff6b7a;
+}
+
+/* Nothing matched. A row rather than a toast: it sits exactly where the
+   results would have been, so the answer is where the eye already is. */
+.search-empty {
+    list-style: none;
+    padding: 14px 12px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px dashed var(--line);
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    overflow-wrap: anywhere;      /* a long search term must not widen the sidebar */
+}
+
+.search-result-tag.muted {
+    background: transparent;
+    color: var(--text-dim);
+    border-color: var(--line);
+}
+
+/* round action buttons: + add, ✓ accept, ✕ decline */
+.icon-btn {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--raised);
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
+                border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.icon-btn:hover {
+    transform: scale(1.1);
+}
+
+.icon-btn.add:hover,
+.icon-btn.accept:hover {
+    background: var(--pink);
+    border-color: var(--pink);
+    color: #fff;
+}
+
+.icon-btn.decline:hover {
+    background: rgba(220, 53, 69, .2);
+    border-color: rgba(220, 53, 69, .55);
+    color: #ff6b7a;
+}
+
+/* --- friends list ------------------------------------------------------ */
+.empty-hint {
+    background: transparent !important;
+    color: var(--text-dim) !important;
+    font-size: 13px;
+    cursor: default !important;
+    padding: 10px 12px !important;
+    margin: 2px 10px !important;
+}
+
+.empty-hint:hover {
+    background: transparent !important;
+    transform: none !important;
+}
+
+.empty-hint::before {
+    display: none !important;
+}
+
+/* --- the bell ---------------------------------------------------------- */
+/* Fixed to the top bar, immediately left of the profile icon (which _Layout
+   positions at right: 20px). */
+.friend-bell {
+    position: fixed;
+    top: 12px;
+    /* _Layout puts the profile dropdown at right:20px; clear it comfortably */
+    right: 74px;
+    z-index: 1100;
+}
+
+.friend-bell-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--pink-soft);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.friend-bell-btn:hover {
+    background: var(--raised);
+    color: var(--pink);
+}
+
+.friend-bell-badge {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--pink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--panel);
+}
+
+.friend-bell-badge.active {
+    display: block;
+}
+
+.friend-bell-badge.pulse {
+    animation: bellPulse 1s ease-in-out 2;
+}
+
+@keyframes bellPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.35); }
+}
+
+/* --- the requests dropdown --------------------------------------------- */
+.friend-requests-panel {
+    display: none;
+    position: absolute;
+    top: 46px;
+    right: 0;
+    width: 320px;
+    /* The panel itself does not scroll - if it did, the "Friend requests"
+       heading would scroll away with the rows. The list below it scrolls
+       instead, so the heading stays pinned. */
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+    padding: 8px;
+}
+
+.friend-requests-panel.open {
+    display: block;
+    animation: panelIn .16s var(--ease);
+}
+
+@keyframes panelIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.friend-requests-head {
+    padding: 8px 10px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+
+/* Same rule as the sidebar lists: 5 rows visible, half of the 6th peeking,
+   scrollbar from the 6th request onward. */
+#friendRequestsBody {
+    max-height: calc(var(--req-row-h) * var(--list-rows-shown));
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.friend-request {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    transition: background var(--speed) var(--ease);
+}
+
+.friend-request:hover {
+    background: var(--raised);
+}
+
+.friend-request-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: transparent;
+    flex: 0 0 auto;
+}
+
+.friend-request-name {
+    flex: 1 1 auto;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-request-empty {
+    padding: 14px 10px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+@media (max-width: 860px) {
+    .friend-bell {
+        right: 60px;
+    }
+
+    .friend-requests-panel {
+        width: min(300px, calc(100vw - 80px));
+    }
+}
+
+/* Shown above the composer when the open chat is with someone who is no
+   longer a friend. The conversation stays readable; only sending is blocked. */
+.composer-notice {
+    display: none;
+    flex: 0 0 auto;
+    padding: 9px 20px;
+    background: rgba(220, 53, 69, .10);
+    border-top: 1px solid rgba(220, 53, 69, .30);
+    color: var(--danger);
+    font-size: 13px;
+    text-align: center;
+}
+
+.composer-notice.show {
+    display: block;
+}
+
+.input-with-icon textarea:disabled,
+#messageInput:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    background: var(--surface);
+}
+
+.send-icon-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    background: var(--raised);
+}
+
+.send-icon-btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: var(--raised);
+}
+
+.send-icon-btn:disabled svg {
+    fill: var(--text-dim);
+}
+
+/* =========================================================================
+   MESSAGE ACTIONS - react, reply, delete
+   Hovering a message shows two buttons beside it. They are mounted with the
+   row rather than on hover, so their space is always reserved and the
+   conversation does not twitch sideways when the pointer arrives.
+   ========================================================================= */
+.msg-actions {
+    display: inline-flex;
+    flex: 0 0 auto;          /* received rows are flex - see .message-meta */
+    align-items: center;
+    align-self: center;      /* the row bottom-aligns its items; these centre */
+    gap: 2px;
+    margin: 0 4px;
+    opacity: 0;
+    transition: opacity var(--speed) var(--ease);
+}
+
+/* A received row already carries Bootstrap's gap-2 (8px), so the margin above
+   would stack on top of it and push the buttons out into the middle of the
+   pane. Pull them back to the same 4px the sent side gets. */
+.msg-row.gap-2 .msg-actions {
+    margin-left: -4px;
+}
+
+/* My own rows are plain right-aligned blocks, so their bubble and toolbar are
+   inline boxes sitting on a baseline - which is why the buttons hung level
+   with the last line of the message instead of its middle. Flex gives them a
+   real cross axis to be centred on. */
+#chatBox .text-end.msg-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* In one of my own rows the toolbar is a #chatBox .text-end > div - which is
+   the pink bubble rule, !important and all, so without this the two buttons
+   arrive wearing a bubble of their own. Match that selector's shape and win
+   on the extra class. */
+#chatBox .text-end > div.msg-actions,
+#chatBox .msg-actions {
+    display: inline-flex;
+    max-width: none;
+    padding: 0 !important;
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--text-dim) !important;
+    font-size: 15px !important;
+}
+
+#chatBox .text-end > div.msg-actions:hover {
+    filter: none;
+}
+
+/* focus-within keeps them up for keyboard users, who never hover at all */
+.msg-row:hover .msg-actions,
+.msg-row:focus-within .msg-actions {
+    opacity: 1;
+}
+
+.msg-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.msg-action:hover {
+    background: var(--raised);
+    color: var(--text);
+}
+
+.msg-action:focus-visible {
+    outline: 2px solid var(--pink);
+    outline-offset: 1px;
+}
+
+/* --- the palette and the three-dot menu ---------------------------------- */
+/* Both are appended to <body>: inside #chatBox they would be clipped by its
+   own scrolling as soon as the message was near the top or bottom edge. */
+.msg-popup {
+    position: fixed;
+    z-index: 1200;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .55);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .14s var(--ease), transform .14s var(--ease);
+}
+
+.msg-popup.open {
+    opacity: 1;
+    transform: none;
+}
+
+.reaction-picker {
+    display: flex;
+    gap: 2px;
+    padding: 5px 7px;
+    border-radius: 999px;
+}
+
+.reaction-choice {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.reaction-choice:hover {
+    background: var(--raised);
+    transform: scale(1.18);
+}
+
+.message-menu {
+    min-width: 172px;
+    padding: 6px;
+    border-radius: var(--radius);
+}
+
+.message-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.message-menu-item:hover {
+    background: var(--raised);
+}
+
+.message-menu-item.danger {
+    color: #ff6b7a;
+}
+
+.message-menu-item.danger:hover {
+    background: rgba(220, 53, 69, .16);
+}
+
+/* --- reaction pills under a message -------------------------------------- */
+.message-reactions {
+    flex: 0 0 auto;          /* same shrink trap as .message-meta */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    /* The pill's top half sits over the bubble's bottom edge. The shift is a
+       transform, not a negative top margin: a margin here collapses with the
+       row's own bottom margin, which is 3px on my rows and 8px on theirs, so
+       one number produced two different overlaps. The negative bottom margin
+       takes back the gap the shift would otherwise leave underneath. */
+    margin: 0 2px -3px;
+    transform: translateY(-9px);
+    /* the bubble's text is inline content of an EARLIER block, and inline
+       content paints above later blocks' backgrounds - without a stacking
+       context of its own the message would show through the pill */
+    position: relative;
+    z-index: 2;
+}
+
+.message-reactions.sent {
+    justify-content: flex-end;
+}
+
+/* line up with the bubble, not the row - see .message-meta.received */
+.message-reactions.received {
+    justify-content: flex-start;
+    padding-left: 53px;      /* 45px avatar column + a nudge off the corner */
+}
+
+.reaction-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    background: #101014;     /* black on both sides, no ring, no tint */
+    border: none;
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), transform var(--speed) var(--ease);
+}
+
+.reaction-pill:hover {
+    background: var(--raised);
+    transform: translateY(-1px);
+}
+
+/* My own choice is not marked out - deliberately, it looks the same as the
+   rest. The title attribute still names everyone who reacted. */
+
+.reaction-count {
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+/* --- the quote above a reply --------------------------------------------- */
+/* Above the row rather than inside the bubble: a bubble is a pill, and a
+   quote box inside one either fights the radius or has to cancel it. */
+.message-quote {
+    flex: 0 0 auto;
+    width: fit-content;
+    max-width: min(62%, 430px);
+    margin: 6px 2px 4px;
+    padding: 5px 11px;
+    border-left: 3px solid var(--pink);
+    border-radius: 8px;
+    background: rgba(11, 11, 14, .8);
+    color: var(--text-dim);
+    font-size: 12.5px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease);
+}
+
+.message-quote:hover {
+    background: var(--raised);
+}
+
+.message-quote.sent {
+    margin-left: auto;
+    text-align: right;
+}
+
+.message-quote.received {
+    margin-left: 45px;
+}
+
+.quote-name {
+    display: block;
+    color: var(--pink-soft);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.quote-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* clicking a quote jumps to the original and blinks it once */
+@keyframes quoteFlash {
+    0%, 100% { background: transparent; }
+    30%      { background: var(--pink-dim); }
+}
+
+.quote-flash {
+    border-radius: 12px;
+    animation: quoteFlash 1.3s var(--ease);
+}
+
+/* --- the strip above the composer while a reply is being written --------- */
+.composer-reply {
+    display: none;
+    flex: 0 0 auto;
+    padding: 10px 20px 0;
+    background: var(--panel);
+}
+
+.composer-reply.show {
+    display: block;
+    /* the divider normally lives on .input-with-icon; whichever strip is
+       topmost owns it, or the line lands mid-composer */
+    border-top: 1px solid var(--line);
+}
+
+.composer-reply.show + .composer-attachment.show {
+    border-top: none;
+}
+
+.composer-reply.show ~ .input-with-icon {
+    border-top-color: transparent;
+}
+
+.reply-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    padding: 7px 10px 7px 0;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.reply-bar {
+    flex: 0 0 auto;
+    align-self: stretch;
+    width: 3px;
+    background: var(--pink);
+}
+
+.reply-body {
+    flex: 1 1 auto;
+    min-width: 0;            /* or the ellipsis never kicks in */
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.reply-name {
+    color: var(--pink-soft);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.reply-text {
+    color: var(--text-dim);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- arrivals ------------------------------------------------------------ */
+/* A message that lands while you are watching opens the conversation up as it
+   arrives: its own height is animated, so the SPACE grows with it instead of
+   appearing in one frame under a fading bubble. That part is done in JS - see
+   animateBox() - because the natural height is only knowable at runtime.
+   What stays here is the reaction pop, which has a fixed shape.
+   A reaction grows out of its own centre - it is a stamp landing on the
+   message, not another message. */
+@keyframes reactionIn {
+    0%   { opacity: 0; transform: scale(.3); }
+    70%  { opacity: 1; transform: scale(1.12); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.reaction-appear {
+    transform-origin: center;
+    animation: reactionIn .26s var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .msg-popup,
+    .reaction-choice,
+    .reaction-pill {
+        transition: none;
+    }
+
+    .quote-flash,
+    .reaction-appear {
+        animation: none;
+    }
+}
+
+/* On a touch screen there is no hover, so the buttons stay visible. They are
+   small and dim enough not to compete with the message itself. */
+@media (hover: none) {
+    .msg-actions {
+        opacity: .55;
+    }
+}

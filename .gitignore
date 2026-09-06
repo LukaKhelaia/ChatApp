@@ -1,0 +1,24 @@
+# Visual Studio / build output
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.vsidx
+*.db
+
+# Local secrets - never commit connection strings or API keys.
+# Use user-secrets locally and environment variables in production.
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.Local.json
+*.local.json
+.env
+.env.*
+
+# User-uploaded content (regenerated at runtime)
+wwwroot/group-images/*
+!wwwroot/group-images/.gitkeep
+
+# Scratch folder for files staged for deletion
+_to_delete/

@@ -1,0 +1,456 @@
+@page
+@model ChatApp.Areas.Identity.Pages.Account.Manage.SettingsModel
+@{
+    // Both: .profile-page carries the shell every signed-in page shares -
+    // the doodle background, the sticky footer - and .settings-page widens it.
+    ViewData["PageClass"] = "profile-page settings-page";
+    Layout = "~/Views/Shared/_ProfileLayout.cshtml";
+    ViewData["Title"] = "Settings";
+}
+
+<div class="settings-shell">
+
+    <!--Sections down the side, one pane at a time on the right. The pane is
+        what fills the screen; the nav keeps it from becoming one long scroll.-->
+    <nav class="settings-nav" aria-label="Settings sections">
+        <button type="button" class="settings-nav-item active" data-pane="account" title="Account" aria-label="Account">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.2 3.1-5.2 7-5.2s7 2 7 5.2"/></svg>
+            <span>Account</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-pane="notifications" title="Notifications" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.5a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5s1.5-1.5 1.5-5.5z"/><path d="M10.2 18.5a2 2 0 0 0 3.6 0"/></svg>
+            <span>Notifications</span>
+        </button>
+        <button type="button" class="settings-nav-item" data-pane="privacy" title="Privacy" aria-label="Privacy">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2l11.6 11.6"/></svg>
+            <span>Privacy</span>
+        </button>
+        <button type="button" class="settings-nav-item danger" data-pane="danger" title="Delete account" aria-label="Delete account">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7M6.5 7l.8 12a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5l.8-12"/></svg>
+            <span>Delete account</span>
+        </button>
+    </nav>
+
+    <div class="settings-content">
+
+        <!-- ============================ ACCOUNT ========================= -->
+        <section class="settings-pane active" data-pane="account">
+            <h2>Account</h2>
+            <p class="settings-lead">The address you sign in with, and the password that goes with it.</p>
+
+            <div class="settings-row">
+                <div class="settings-label">Email</div>
+                <div class="settings-value" id="currentEmail">@Model.Email</div>
+                <button type="button" id="changeEmailBtn" class="btn btn-sm btn-outline-light">Change</button>
+            </div>
+
+            <div id="emailOverlay" class="app-modal" hidden>
+              <div class="app-modal-dialog">
+                <h3 class="app-modal-title">Change your email</h3>
+                <div id="emailPanel" class="settings-panel">
+                <p id="emailMessage" class="settings-message" role="status"></p>
+
+                <div class="settings-step" data-step="address">
+                    <label class="form-label" for="newEmail">New email address</label>
+                    <input type="email" id="newEmail" class="form-control" autocomplete="email" placeholder="name@example.com" />
+                    <p class="settings-hint">A code goes to your current address to confirm the move.</p>
+
+                    <div class="settings-panel-actions">
+                        <button type="button" id="sendEmailCodeBtn" class="btn btn-change">Send code</button>
+                        <button type="button" class="link-button cancel-email">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="settings-step" data-step="code" hidden>
+                    <p class="settings-target">Changing to <strong id="pendingEmail"></strong></p>
+                    <label class="form-label">Six-digit code</label>
+                    <div class="code-boxes" data-code-for="emailCode"></div>
+                    <input type="hidden" id="emailCode" />
+
+                    <div class="settings-panel-actions">
+                        <button type="button" id="confirmEmailBtn" class="btn btn-change">Confirm</button>
+                        <button type="button" class="link-button cancel-email">Cancel</button>
+                    </div>
+                </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+                <div class="settings-label">Password</div>
+                <div class="settings-value">••••••••</div>
+                <button type="button" id="changePasswordBtn" class="btn btn-sm btn-outline-light">Change</button>
+            </div>
+
+            <div id="passwordOverlay" class="app-modal" hidden>
+              <div class="app-modal-dialog">
+                <h3 class="app-modal-title">Change your password</h3>
+                <div id="passwordPanel" class="settings-panel">
+                <p id="passwordMessage" class="settings-message" role="status"></p>
+
+                <label class="form-label" for="currentPassword">Current password</label>
+                <input type="password" id="currentPassword" class="form-control" autocomplete="current-password" />
+
+                <label class="form-label mt-2" for="newPassword">New password</label>
+                <input type="password" id="newPassword" class="form-control" autocomplete="new-password" />
+
+                <label class="form-label mt-2" for="newPasswordConfirm">Confirm new password</label>
+                <input type="password" id="newPasswordConfirm" class="form-control" autocomplete="new-password" />
+
+                <div class="settings-panel-actions">
+                    <button type="button" id="savePasswordBtn" class="btn btn-change">Save password</button>
+                    <button type="button" id="cancelPasswordBtn" class="link-button">Cancel</button>
+                </div>
+                </div>
+              </div>
+            </div>
+        </section>
+
+        <!-- ========================= NOTIFICATIONS ====================== -->
+        <section class="settings-pane" data-pane="notifications">
+            <h2>Notifications</h2>
+            <p class="settings-lead">What happens when a message arrives while you have ChatApp open.</p>
+
+            <div class="settings-row">
+                <div class="settings-toggle-text">
+                    <div class="settings-toggle-title">Message sound</div>
+                    <div class="settings-toggle-sub">A short tone for every message that isn't yours.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="soundToggle" />
+                    <span class="switch-track"></span>
+                </label>
+            </div>
+
+            <p id="soundMessage" class="settings-message" role="status"></p>
+        </section>
+
+        <!-- ============================ PRIVACY ========================= -->
+        <section class="settings-pane" data-pane="privacy">
+            <h2>Privacy</h2>
+            <p class="settings-lead">
+                People you have blocked. Neither of you can message the other, and they cannot find you in search.
+            </p>
+
+            <div id="blockedList" class="blocked-list"></div>
+        </section>
+
+        <!-- ============================ DANGER ========================== -->
+        <section class="settings-pane" data-pane="danger">
+            <h2>Delete account</h2>
+            <p class="settings-lead">
+                This removes your account and everything in it: your messages, your side of every
+                conversation, your friendships and anything you have uploaded. It cannot be undone.
+            </p>
+
+            <div class="settings-panel danger-panel">
+                <p class="settings-hint">
+                    Groups you created are handed to their longest-standing member, so other people's
+                    conversations survive. A group with nobody left in it goes with you.
+                </p>
+
+                <p id="deleteMessage" class="settings-message" role="status"></p>
+
+                <label class="form-label" for="deletePassword">Confirm with your password</label>
+                <input type="password" id="deletePassword" class="form-control" autocomplete="current-password" />
+
+                <button type="button" id="deleteAccountBtn" class="btn btn-danger-solid mt-3">Delete my account</button>
+            </div>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            async function call(url, body, method) {
+                try {
+                    const options = { method: method || "POST" };
+                    if (body !== undefined) {
+                        options.headers = { "Content-Type": "application/json" };
+                        options.body = JSON.stringify(body);
+                    }
+                    const res = await fetch(url, options);
+                    const data = await res.json().catch(() => ({}));
+                    return { ok: res.ok, message: data.message || "", data };
+                } catch (error) {
+                    console.error(url, error);
+                    return { ok: false, message: "Could not reach the server.", data: {} };
+                }
+            }
+
+            function say(node, text, kind) {
+                node.textContent = text || "";
+                node.className = "settings-message" + (kind ? " " + kind : "");
+            }
+
+            function busy(button, on, label) {
+                button.disabled = on;
+                if (on) {
+                    button.dataset.label = button.textContent;
+                    button.textContent = label;
+                } else if (button.dataset.label) {
+                    button.textContent = button.dataset.label;
+                }
+            }
+
+            function banner(text) {
+                const done = document.createElement("p");
+                done.className = "settings-done";
+                done.textContent = text;
+                const pane = document.querySelector(".settings-pane.active");
+                pane.insertBefore(done, pane.querySelector("h2").nextSibling);
+            }
+
+            // ---- which pane is showing ---------------------------------
+            const navItems = Array.from(document.querySelectorAll(".settings-nav-item"));
+            const panes = Array.from(document.querySelectorAll(".settings-pane"));
+
+            navItems.forEach(item => {
+                item.addEventListener("click", () => {
+                    const name = item.dataset.pane;
+                    navItems.forEach(n => n.classList.toggle("active", n === item));
+                    panes.forEach(p => p.classList.toggle("active", p.dataset.pane === name));
+                    if (name === "privacy") loadBlocked();
+                });
+            });
+
+            // ---- email --------------------------------------------------
+            const emailOverlay = document.getElementById("emailOverlay");
+            const emailPanel = document.getElementById("emailPanel");
+            const emailMessage = document.getElementById("emailMessage");
+            const addressStep = emailPanel.querySelector('[data-step="address"]');
+            const codeStep = emailPanel.querySelector('[data-step="code"]');
+            const newEmail = document.getElementById("newEmail");
+            const emailCode = document.getElementById("emailCode");
+
+            function resetEmailPanel() {
+                addressStep.hidden = false;
+                codeStep.hidden = true;
+                newEmail.value = "";
+                codeBoxes.clear(emailCode);
+                say(emailMessage, "");
+            }
+
+            document.getElementById("changeEmailBtn").addEventListener("click", () => {
+                resetEmailPanel();
+                openModal(emailOverlay);
+                newEmail.focus();
+            });
+
+            // one per step, so the pair always sits with the button it belongs to
+            emailPanel.querySelectorAll(".cancel-email").forEach(button => {
+                button.addEventListener("click", () => {
+                    closeModal(emailOverlay);
+                    resetEmailPanel();
+                });
+            });
+
+            document.getElementById("sendEmailCodeBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+                busy(button, true, "Sending...");
+                const result = await call("/api/account/email/request-code", { newEmail: newEmail.value.trim() });
+                busy(button, false);
+
+                say(emailMessage, result.message, result.ok ? "good" : "bad");
+                if (result.ok) {
+                    // The code went to the CURRENT address, so the new one is
+                    // shown here - the last chance to spot a typo before the
+                    // account starts depending on it.
+                    document.getElementById("pendingEmail").textContent =
+                        result.data.newEmail || newEmail.value.trim();
+                    addressStep.hidden = true;
+                    codeStep.hidden = false;
+                    codeBoxes.focus(emailCode);
+                }
+            });
+
+            document.getElementById("confirmEmailBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+                busy(button, true, "Checking...");
+                const result = await call("/api/account/email/confirm", { code: emailCode.value.trim() });
+                busy(button, false);
+
+                if (!result.ok) {
+                    say(emailMessage, result.message, "bad");
+                    codeBoxes.error(emailCode);     // shake, redden, and start over
+                    return;
+                }
+
+                document.getElementById("currentEmail").textContent = result.data.email || newEmail.value.trim();
+                closeModal(emailOverlay);
+                resetEmailPanel();
+                banner(result.message + " You sign in with it from now on.");
+            });
+
+            // ---- password -----------------------------------------------
+            const passwordOverlay = document.getElementById("passwordOverlay");
+            const passwordPanel = document.getElementById("passwordPanel");
+            const passwordMessage = document.getElementById("passwordMessage");
+            const currentPassword = document.getElementById("currentPassword");
+            const newPassword = document.getElementById("newPassword");
+            const newPasswordConfirm = document.getElementById("newPasswordConfirm");
+
+            function clearPasswordPanel() {
+                currentPassword.value = "";
+                newPassword.value = "";
+                newPasswordConfirm.value = "";
+                say(passwordMessage, "");
+            }
+
+            document.getElementById("changePasswordBtn").addEventListener("click", () => {
+                clearPasswordPanel();
+                openModal(passwordOverlay);
+                currentPassword.focus();
+            });
+
+            document.getElementById("cancelPasswordBtn").addEventListener("click", () => {
+                closeModal(passwordOverlay);
+                clearPasswordPanel();
+            });
+
+            document.getElementById("savePasswordBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+
+                if (!currentPassword.value || !newPassword.value) {
+                    say(passwordMessage, "Fill in both passwords.", "bad");
+                    return;
+                }
+                if (newPassword.value !== newPasswordConfirm.value) {
+                    say(passwordMessage, "The two new passwords are not the same.", "bad");
+                    return;
+                }
+
+                busy(button, true, "Saving...");
+                const result = await call("/api/account/password", {
+                    currentPassword: currentPassword.value,
+                    newPassword: newPassword.value
+                });
+                busy(button, false);
+
+                if (!result.ok) { say(passwordMessage, result.message, "bad"); return; }
+
+                closeModal(passwordOverlay);
+                clearPasswordPanel();
+                banner(result.message);
+            });
+
+            // Enter is the obvious way to finish a dialog, and these are not
+            // forms - nothing submits on its own. The button belongs to
+            // whichever step is on screen.
+            function primaryButton(overlay) {
+                const steps = Array.from(overlay.querySelectorAll(".settings-step"));
+                const scope = steps.length ? steps.find(step => !step.hidden) : overlay;
+                return scope ? scope.querySelector(".btn-change") : null;
+            }
+
+            [emailOverlay, passwordOverlay].forEach(overlay => {
+                overlay.addEventListener("keydown", (e) => {
+                    if (e.key !== "Enter" || e.shiftKey) return;
+
+                    const button = primaryButton(overlay);
+                    if (!button || button.disabled) return;
+
+                    e.preventDefault();
+                    button.click();
+                });
+            });
+
+            // ---- sound ---------------------------------------------------
+            const soundToggle = document.getElementById("soundToggle");
+            const soundMessage = document.getElementById("soundMessage");
+
+            call("/api/account/settings", undefined, "GET").then(result => {
+                if (result.ok) soundToggle.checked = result.data.soundEnabled !== false;
+            });
+
+            soundToggle.addEventListener("change", async () => {
+                const wanted = soundToggle.checked;
+                const result = await call("/api/account/sound", { enabled: wanted });
+
+                if (!result.ok) {
+                    soundToggle.checked = !wanted;      // put it back
+                    say(soundMessage, "Could not save that. Try again.", "bad");
+                    return;
+                }
+                say(soundMessage, wanted ? "Sound is on." : "Sound is off.", "good");
+            });
+
+            // ---- blocked people ------------------------------------------
+            const blockedList = document.getElementById("blockedList");
+            let blockedLoaded = false;
+
+            async function loadBlocked(force) {
+                if (blockedLoaded && !force) return;
+                blockedLoaded = true;
+
+                blockedList.textContent = "Loading...";
+                const result = await call("/api/account/blocked", undefined, "GET");
+
+                blockedList.textContent = "";
+                const people = Array.isArray(result.data) ? result.data : [];
+
+                if (!people.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "settings-empty";
+                    empty.textContent = "You haven't blocked anyone.";
+                    blockedList.appendChild(empty);
+                    return;
+                }
+
+                people.forEach(person => {
+                    const row = document.createElement("div");
+                    row.className = "blocked-row";
+
+                    const avatar = document.createElement("img");
+                    avatar.src = person.avatarUrl || "/images/default-avatar.png";
+                    avatar.alt = "";
+                    avatar.className = "blocked-avatar";
+
+                    const name = document.createElement("span");
+                    name.className = "blocked-name";
+                    name.textContent = person.nickname || person.userName;
+
+                    const unblock = document.createElement("button");
+                    unblock.type = "button";
+                    unblock.className = "btn btn-sm btn-outline-light";
+                    unblock.textContent = "Unblock";
+                    unblock.addEventListener("click", async () => {
+                        busy(unblock, true, "...");
+                        const done = await call("/api/blocks/unblock", { userName: person.userName });
+                        busy(unblock, false);
+                        if (done.ok) loadBlocked(true);
+                    });
+
+                    row.appendChild(avatar);
+                    row.appendChild(name);
+                    row.appendChild(unblock);
+                    blockedList.appendChild(row);
+                });
+            }
+
+            // ---- closing the account -------------------------------------
+            document.getElementById("deleteAccountBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+                const password = document.getElementById("deletePassword");
+                const message = document.getElementById("deleteMessage");
+
+                if (!password.value) {
+                    say(message, "Enter your password to confirm.", "bad");
+                    return;
+                }
+                if (!confirm("Delete your account and everything in it? This cannot be undone.")) return;
+
+                busy(button, true, "Deleting...");
+                const result = await call("/api/account/delete", { currentPassword: password.value });
+                busy(button, false);
+
+                if (!result.ok) { say(message, result.message, "bad"); return; }
+
+                // The session is gone with the account; there is nothing to
+                // stay on this page for.
+                window.location.href = "/Identity/Account/Login";
+            });
+        })();
+    </script>
+}

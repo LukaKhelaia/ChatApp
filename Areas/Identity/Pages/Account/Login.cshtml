@@ -1,0 +1,269 @@
+@page
+@model LoginModel
+
+@{
+    // Every auth page sets this - _Layout puts it on <html> and <body>, and it
+    // is what scopes the dark card styling in site.css to these pages.
+    ViewData["PageClass"] = "auth-page";
+    ViewData["Title"] = "Log in";
+}
+
+
+<div class="row">
+    <div class="col-md-4">
+        <section>
+            <form id="account" method="post">
+                <h2>Log in</h2>
+                <hr />
+                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                    <label asp-for="Input.Email" class="form-label">Email</label>
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label asp-for="Input.Password" class="form-label">Password</label>
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="login-options mb-3">
+                    <label asp-for="Input.RememberMe" class="form-label">
+                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                        @Html.DisplayNameFor(m => m.Input.RememberMe)
+                    </label>
+                    <button type="button" id="forgotPasswordLink" class="link-button">Forgot your password?</button>
+                </div>
+                <div>
+                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </div>
+                <div>
+                    <p>
+                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Register as a new user</a>
+                    </p>
+                </div>
+            </form>
+            <!--Forgotten password: email -> six digits -> new password. Three
+                steps in one panel rather than three pages, so nobody loses
+                their place between them.-->
+            <section id="resetPanel" class="reset-panel" hidden>
+                <h2>Reset your password</h2>
+                <hr />
+
+                <p id="resetMessage" class="reset-message" role="status"></p>
+
+                <div class="reset-step" data-step="email">
+                    <label class="form-label" for="resetEmail">Your email</label>
+                    <input type="email" id="resetEmail" class="form-control" autocomplete="email" placeholder="name@example.com" />
+                    <button type="button" id="sendCodeBtn" class="w-100 btn btn-lg btn-primary mt-3">Send code</button>
+                </div>
+
+                <div class="reset-step" data-step="code" hidden>
+                    <label class="form-label">Six-digit code</label>
+                    <div class="code-boxes" data-code-for="resetCode"></div>
+                    <input type="hidden" id="resetCode" />
+                    <button type="button" id="verifyCodeBtn" class="w-100 btn btn-lg btn-primary mt-3">Continue</button>
+                </div>
+
+                <div class="reset-step" data-step="password" hidden>
+                    <label class="form-label" for="resetPassword">New password</label>
+                    <input type="password" id="resetPassword" class="form-control" autocomplete="new-password" />
+                    <label class="form-label mt-2" for="resetPasswordConfirm">Confirm it</label>
+                    <input type="password" id="resetPasswordConfirm" class="form-control" autocomplete="new-password" />
+                    <button type="button" id="savePasswordBtn" class="w-100 btn btn-lg btn-primary mt-3">Change password</button>
+                </div>
+
+                <div class="reset-footer">
+                    <button type="button" id="resendCodeBtn" class="link-button" hidden>Send another code</button>
+                    <button type="button" id="backToLogin" class="link-button">Back to sign in</button>
+                </div>
+            </section>
+        </section>
+    </div>
+    
+       
+</div>
+
+@section Styles {
+    <style>
+
+        .btn {
+            background-color: #ff1493 !important;
+            border-color: #ff1493 !important;
+            color: #fff;
+        }
+        
+        .btn:focus,
+        .btn:active {
+            outline: none;
+            box-shadow: none;
+        }
+
+    </style>
+  }
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            const loginForm = document.getElementById("account");
+            const panel = document.getElementById("resetPanel");
+            const message = document.getElementById("resetMessage");
+            if (!loginForm || !panel) return;
+
+            const steps = {
+                email: panel.querySelector('[data-step="email"]'),
+                code: panel.querySelector('[data-step="code"]'),
+                password: panel.querySelector('[data-step="password"]')
+            };
+
+            const emailInput = document.getElementById("resetEmail");
+            const codeInput = document.getElementById("resetCode");
+            const passwordInput = document.getElementById("resetPassword");
+            const confirmInput = document.getElementById("resetPasswordConfirm");
+
+            const resendBtn = document.getElementById("resendCodeBtn");
+
+            function show(step) {
+                Object.keys(steps).forEach(name => { steps[name].hidden = name !== step; });
+
+                // Only the code step has anything to resend.
+                resendBtn.hidden = step !== "code";
+
+                if (step === "code") {
+                    codeBoxes.focus(codeInput);
+                    return;
+                }
+
+                const field = steps[step].querySelector("input:not([type=hidden])");
+                if (field) field.focus();
+            }
+
+            function say(text, kind) {
+                message.textContent = text || "";
+                message.className = "reset-message" + (kind ? " " + kind : "");
+            }
+
+            function busy(button, on, label) {
+                button.disabled = on;
+                if (on) {
+                    button.dataset.label = button.textContent;
+                    button.textContent = label;
+                } else if (button.dataset.label) {
+                    button.textContent = button.dataset.label;
+                }
+            }
+
+            async function post(url, body) {
+                try {
+                    const res = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body)
+                    });
+                    // Every reply carries a message, success or not.
+                    const data = await res.json().catch(() => ({}));
+                    return { ok: res.ok, message: data.message || "" };
+                } catch (error) {
+                    console.error(url, error);
+                    return { ok: false, message: "Could not reach the server. Check your connection." };
+                }
+            }
+
+            document.getElementById("forgotPasswordLink").addEventListener("click", () => {
+                loginForm.hidden = true;
+                panel.hidden = false;
+                say("");
+                show("email");
+
+                // carry over whatever they already typed into the login form
+                const typed = document.getElementById("Input_Email");
+                if (typed && typed.value && !emailInput.value) emailInput.value = typed.value;
+                emailInput.focus();
+            });
+
+            document.getElementById("backToLogin").addEventListener("click", () => {
+                panel.hidden = true;
+                loginForm.hidden = false;
+            });
+
+            async function requestCode(button) {
+                const email = emailInput.value.trim();
+                if (!email) { say("Enter your email address.", "bad"); return; }
+
+                busy(button, true, "Sending...");
+                const result = await post("/api/password-reset/request", { email });
+                busy(button, false);
+
+                say(result.message, result.ok ? "good" : "bad");
+                if (result.ok) show("code");
+            }
+
+            document.getElementById("sendCodeBtn")
+                .addEventListener("click", (e) => requestCode(e.currentTarget));
+            resendBtn.addEventListener("click", (e) => requestCode(e.currentTarget));
+
+            document.getElementById("verifyCodeBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+                busy(button, true, "Checking...");
+                const result = await post("/api/password-reset/verify", {
+                    email: emailInput.value.trim(),
+                    code: codeInput.value.trim()
+                });
+                busy(button, false);
+
+                if (!result.ok) {
+                    say(result.message, "bad");
+                    codeBoxes.error(codeInput);     // shake, redden, and start over
+                    return;
+                }
+                say("");
+                show("password");
+            });
+
+            document.getElementById("savePasswordBtn").addEventListener("click", async (e) => {
+                const button = e.currentTarget;
+
+                if (passwordInput.value.length === 0) { say("Choose a new password.", "bad"); return; }
+                if (passwordInput.value !== confirmInput.value) {
+                    say("The two passwords are not the same.", "bad");
+                    return;
+                }
+
+                busy(button, true, "Saving...");
+                const result = await post("/api/password-reset/reset", {
+                    email: emailInput.value.trim(),
+                    code: codeInput.value.trim(),
+                    newPassword: passwordInput.value
+                });
+                busy(button, false);
+
+                if (!result.ok) { say(result.message, "bad"); return; }
+
+                // Done: back to the sign-in form with the address filled in.
+                panel.hidden = true;
+                loginForm.hidden = false;
+
+                const typed = document.getElementById("Input_Email");
+                if (typed) typed.value = emailInput.value.trim();
+
+                const done = document.createElement("p");
+                done.className = "reset-done";
+                done.textContent = result.message;
+                loginForm.prepend(done);
+
+                const password = document.getElementById("Input_Password");
+                if (password) password.focus();
+            });
+
+            // Enter should carry the person forward, not submit a hidden form.
+            panel.addEventListener("keydown", (e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const visible = Object.keys(steps).find(name => !steps[name].hidden);
+                const button = steps[visible].querySelector("button");
+                if (button) button.click();
+            });
+        })();
+    </script>
+}

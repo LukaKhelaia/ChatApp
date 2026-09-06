@@ -1,0 +1,1544 @@
+/* ============================================================================
+   ChatApp - shared site styles
+   Design tokens + base dark theme + the auth and profile screens.
+   The chat page layers wwwroot/css/chat.css on top of this and scopes its
+   full-screen shell under .chat-page, so nothing here fights it.
+
+   Page-specific blocks are scoped by the class _Layout puts on <html>/<body>
+   from ViewData["PageClass"]:  .auth-page   .profile-page   .chat-page
+   ========================================================================= */
+
+:root {
+    --bg:          #000000;
+    --panel:       #0b0b0e;
+    --surface:     #050507;
+    --raised:      #18181d;
+    --raised-hi:   #222228;
+    --line:        #1c1c22;
+
+    /* Panels that let the doodle backdrop read through instead of covering it.
+       Two weights so the sign-in card and the settings rows cannot drift apart,
+       and the bar across the top stays a shade more solid than the panels
+       floating under it.
+
+       The alphas look surprisingly low, and they have to be. The backdrop
+       pattern is white at 0.048 opacity - about twelve levels above black - so
+       there is very little there to see through in the first place. Measured
+       against the bare page: .55 leaves 43% of the pattern readable inside a
+       panel, which is why the first attempt looked like no transparency at all.
+       .14 keeps ~88%, which reads as genuinely see-through, and the panel is
+       then held together by its border rather than by its fill. */
+    --glass:        rgba(0, 0, 0, .14);
+    --glass-strong: rgba(0, 0, 0, .32);
+    /* Dialogs get their own weight rather than sharing the header's, and a
+       blur to go with it. A dialog is the one glass surface with live page
+       content behind it - headings, rows, the form you just came from - and
+       readable text showing through readable text is the thing that made this
+       look wrong at every alpha. The blur destroys legibility behind without
+       darkening anything, which is what lets the alpha stay LOW: .35 is
+       lighter than the .50 flat version and reads as far more transparent,
+       because what comes through is a soft wash rather than words.
+
+       This only works now that the backdrop dim moved out from behind the
+       dialog. Blurring 66% black just yields more black - which is exactly
+       what the first attempt at this did. */
+    --glass-dialog: rgba(0, 0, 0, .35);
+    --glass-dialog-blur: 18px;
+    --glass-line:   rgba(255, 255, 255, .08);
+
+    --pink:        #ff1493;
+    --pink-soft:   #ff69b4;
+    --pink-dim:    rgba(255, 20, 147, .16);
+
+    --text:        #f2f2f5;
+    --text-dim:    #9a9aa8;
+    --danger:      #ff6b7a;
+
+    --radius:      12px;
+    --radius-lg:   18px;
+    --speed:       .18s;
+    --ease:        cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ----------------------------------------------------------------- base -- */
+html {
+    font-size: 16px;
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* NOTE: the old site.css centred *every* page with
+   body { display:flex; align-items:center; height:100vh } and resized
+   Bootstrap's .col-md-4 / .col-md-8 globally. Both are gone - the auth screens
+   below centre themselves, and the grid classes are left alone so they behave
+   the way Bootstrap intends everywhere else. */
+
+a {
+    color: var(--pink);
+    text-decoration: none;
+    transition: color var(--speed) var(--ease);
+}
+
+a:hover {
+    color: var(--pink-soft);
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5 {
+    color: var(--text);
+}
+
+/* --------------------------------------------------------------- navbar -- */
+.navbar {
+    /* The heavier of the two glass weights: the bar sits above everything, so
+       it stays more solid than the panels below it. The chat page keeps its own
+       opaque header (chat.css) - there is no patterned backdrop behind it there,
+       so transparency would buy nothing. */
+    background: var(--glass-strong) !important;
+    /* !important: the markup carries Bootstrap's .border-bottom utility, whose
+       own declaration is !important and paints a light #dee2e6 line. */
+    border-bottom: 1px solid var(--glass-line) !important;
+    box-shadow: none !important;
+    padding: 0 20px;
+    min-height: 56px;
+}
+
+.navbar-brand {
+    color: var(--pink-soft) !important;
+    font-size: 22px !important;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-decoration: none !important;
+    transition: color var(--speed) var(--ease);
+}
+
+.navbar-brand:hover {
+    color: var(--pink) !important;
+}
+
+.nav-link {
+    color: var(--pink-soft) !important;
+    text-decoration: none !important;
+    transition: color var(--speed) var(--ease);
+}
+
+.nav-link:hover {
+    color: var(--pink) !important;
+}
+
+button.nav-link {
+    background: none;
+    border: none;
+}
+
+/* ---- account icon, top right --------------------------------------------
+   Was inline-styled at top:20px with no font-size, so it sat a few pixels
+   lower than the friend bell and rendered at the default 16px. Both are now
+   38px boxes on the same baseline. */
+.user-menu-anchor {
+    position: fixed;
+    top: 12px;
+    right: 20px;
+    z-index: 1100;
+}
+
+.user-menu-anchor .navbar-nav {
+    flex-direction: row;
+    margin: 0;
+    padding: 0;
+}
+
+.user-menu-anchor .nav-item {
+    list-style: none;
+}
+
+.user-menu-anchor .nav-link {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0 !important;
+    border-radius: 10px;
+    font-size: 20px !important;
+    line-height: 1;
+    transition: background var(--speed) var(--ease);
+}
+
+.user-menu-anchor .nav-link:hover {
+    background: var(--raised);
+}
+
+/* Bootstrap's caret would push the emoji off-centre inside a 38px box */
+.user-menu-anchor .dropdown-toggle::after {
+    display: none;
+}
+
+/* Bootstrap parks .navbar-nav .dropdown-menu at position:static. Because the
+   menu below is kept displayed so it can animate, a static menu sat in the
+   flow and stretched this list item to the menu's own width, shoving the icon
+   122px to the left -- until Popper absolutely positioned the menu on open and
+   the icon snapped back to the right. Pinning the menu ourselves keeps the
+   icon still, open or closed. data-bs-display="static" on the toggle stops
+   Popper writing inline transforms over the animation below. */
+.user-menu-anchor .nav-item {
+    position: relative;
+}
+
+.user-menu-anchor .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: auto;
+    margin-top: 6px;
+}
+
+/* Account dropdown, shared by _Layout and _ProfileLayout.
+   Bootstrap swaps display:none for display:block, which cannot be animated.
+   Keeping it displayed and hiding it with opacity + visibility lets it fade
+   and drop into place instead of snapping open. Scoped to the account menu:
+   the chat page has its own .dropdown-menu driven by inline display, which
+   this rule would otherwise leave permanently invisible. */
+.user-menu-anchor .dropdown-menu {
+    display: block;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px) scale(.98);
+    transform-origin: top right;
+    transition: opacity .16s ease, transform .18s cubic-bezier(.22, .61, .36, 1),
+                visibility 0s linear .18s;
+}
+
+.user-menu-anchor .dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    /* visible immediately on the way in, hidden only after the fade out */
+    transition: opacity .16s ease, transform .18s cubic-bezier(.22, .61, .36, 1),
+                visibility 0s;
+}
+
+.profile-item {
+    border: none !important;
+    width: 100%;
+    text-align: start;
+    border-radius: 8px;
+    padding: 9px 12px !important;
+    font-size: 15px !important;
+    color: var(--text) !important;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.profile-item:hover {
+    background: var(--raised) !important;
+    color: var(--pink-soft) !important;
+}
+
+.profile-item.text-danger:hover {
+    background: rgba(220, 53, 69, .16) !important;
+    color: var(--danger) !important;
+}
+
+#logoutForm {
+    background: transparent;
+}
+
+/* --------------------------------------------------------------- footer -- */
+.footer {
+    border-top: 1px solid var(--line) !important;
+    color: var(--text-dim) !important;
+    padding: 14px 0;
+    font-size: 14px;
+}
+
+/* ------------------------------------------------------ forms & buttons -- */
+.form-control {
+    background: var(--raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease), background var(--speed) var(--ease);
+}
+
+.form-control::placeholder {
+    color: var(--text-dim);
+}
+
+.form-control:focus {
+    background: var(--raised-hi);
+    color: var(--text);
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-dim);
+    outline: none;
+}
+
+/* Bootstrap's floating labels sit on a white slab by default */
+.form-floating > label {
+    color: var(--text-dim);
+    padding: 1rem 0.875rem;      /* must match the input's padding to centre */
+}
+
+/* Restore Bootstrap's floating-label geometry. The generic .form-control
+   padding above is right for plain inputs but throws the label off-centre
+   inside .form-floating, leaving a gap under the placeholder. */
+.form-floating > .form-control {
+    height: calc(3.5rem + 2px);
+    padding: 1rem 0.875rem;
+    line-height: 1.25;
+}
+
+.form-floating > .form-control:focus,
+.form-floating > .form-control:not(:placeholder-shown) {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--pink-soft);
+}
+
+.form-floating > .form-control:focus ~ label::after,
+.form-floating > .form-control:not(:placeholder-shown) ~ label::after {
+    background: transparent !important;
+}
+
+.form-label {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.checkbox label,
+.form-check-label {
+    color: var(--text-dim);
+}
+
+.form-check-input {
+    background-color: var(--raised);
+    border-color: var(--line);
+}
+
+.form-check-input:checked {
+    background-color: var(--pink);
+    border-color: var(--pink);
+}
+
+.form-check-input:focus {
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-dim);
+}
+
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: background var(--speed) var(--ease), transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+
+.btn:focus,
+.btn:active {
+    outline: none;
+    box-shadow: none;
+}
+
+.btn-primary,
+.btn-change {
+    background: var(--pink);
+    border-color: var(--pink);
+    color: #fff;
+}
+
+.btn-primary:hover,
+.btn-change:hover {
+    background: var(--pink-soft);
+    border-color: var(--pink-soft);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(255, 20, 147, .3);
+}
+
+.btn-outline-light {
+    border-color: var(--line);
+    color: var(--text-dim);
+}
+
+.btn-outline-light:hover {
+    background: var(--raised);
+    border-color: var(--pink);
+    color: var(--pink-soft);
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.alert {
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--raised);
+    color: var(--text);
+}
+
+.alert-success { border-color: rgba(40, 167, 69, .45); }
+.alert-danger  { border-color: rgba(220, 53, 69, .45); }
+
+/* validation summary shouldn't be an invisible empty gap */
+.validation-summary-errors ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+/* ==========================================================================
+   AUTH SCREENS  (login, register, 2fa, recovery code, logout)
+   ========================================================================== */
+/* Shared doodle backdrop, same tile as the chat page. The seamless SVG lives
+   in wwwroot/images and repeats on a 420px grid, so it costs one 29KB request
+   and nothing else. Note there is NO pink glow layer any more - the pattern
+   alone reads more evenly from top to bottom. */
+.auth-page body,
+body.auth-page {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg);
+    background-image: url("/images/chat-pattern.svg");
+    background-repeat: repeat;
+    background-size: 420px 420px;
+}
+
+/* direct child only - the footer has its own .container inside it */
+body.auth-page > .container {
+    flex: 1 0 auto;              /* 1 0: grow to fill, never shrink below the
+                                    card's height, so a tall form pushes the
+                                    footer down instead of sliding under it */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px 56px;   /* bottom gap so a tall card never crowds the footer */
+}
+
+body.auth-page > footer {
+    flex: 0 0 auto;
+}
+
+.auth-page footer .container {
+    display: block;
+    flex: none;
+    padding: 0 16px;
+}
+
+.auth-page main {
+    width: 100%;
+    max-width: 460px;
+}
+
+/* the markup is <div class="row"><div class="col-md-4">…</div></div>;
+   turn that into a single centred card without touching the views */
+.auth-page .row {
+    margin: 0;
+    justify-content: center;
+}
+
+.auth-page .col-md-4 {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 460px;
+    padding: 34px 32px;
+    /* see-through, so the pattern behind the page carries on through the card
+       rather than stopping at its edge */
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .6);
+}
+
+.auth-page h1,
+.auth-page h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.auth-page h1 + hr,
+.auth-page h2 + hr,
+.auth-page hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    opacity: 1;
+    margin: 16px 0 22px;
+}
+
+.auth-page .btn-lg {
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 10px;
+}
+
+.auth-page p {
+    color: var(--text-dim);
+    font-size: 14.5px;
+}
+
+/* the "Register as a new user" link under the Log in button */
+.auth-page form p {
+    margin: 12px 0 0;
+}
+
+.auth-page form p a {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    text-align: center;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--pink-soft);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.auth-page form p a:hover {
+    background: var(--raised-hi);
+    border-color: var(--pink);
+    color: var(--pink);
+}
+
+.auth-page .form-floating > label {
+    color: var(--text-dim);
+}
+
+/* avatar picker on the register screen */
+#avatarSelection {
+    display: grid !important;            /* markup uses .d-flex.flex-wrap */
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px !important;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    max-height: 196px;
+    overflow-y: auto;
+}
+
+/* Firefox only - see the note in chat.css: Chrome discards the
+   ::-webkit-scrollbar rules below if these are also set here. */
+@supports not selector(::-webkit-scrollbar) {
+    #avatarSelection {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 20, 147, .75) transparent;
+    }
+}
+
+.avatar-option {
+    /* let the grid size them so each row fills the panel edge to edge */
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    border-radius: 10px !important;
+    background: transparent;     /* no slab behind the art - just the artwork */
+    /* the inline style attribute sets a 2px transparent border; keep the same
+       box size so selecting one doesn't shift the grid */
+    transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease), filter var(--speed) var(--ease);
+}
+
+.avatar-option:hover {
+    transform: translateY(-2px) scale(1.08);
+    box-shadow: 0 0 18px rgba(255, 20, 147, .55);
+    filter: brightness(1.12);
+}
+
+#avatarSelection::-webkit-scrollbar { width: 10px; }
+#avatarSelection::-webkit-scrollbar-track { background: transparent; }
+#avatarSelection::-webkit-scrollbar-thumb {
+    background: rgba(255, 20, 147, .75);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+#avatarSelection::-webkit-scrollbar-thumb:hover { background: var(--pink); background-clip: content-box; }
+
+/* ==========================================================================
+   PROFILE SCREEN
+   ========================================================================== */
+/* Same sticky-footer + centred-content shell as the auth screens: the page is
+   a flex column, the content container grows to fill whatever is left between
+   navbar and footer and centres the card inside it, and the footer sits at the
+   bottom of the viewport instead of directly under the card. */
+.profile-page body,
+body.profile-page {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg);
+    background-image: url("/images/chat-pattern.svg");
+    background-repeat: repeat;
+    background-size: 420px 420px;
+}
+
+/* direct child only - the footer has its own .container inside it */
+body.profile-page > .container {
+    flex: 1 0 auto;              /* grow, never shrink: a tall edit form pushes
+                                    the footer down rather than sliding under */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px 56px;
+}
+
+body.profile-page > footer {
+    flex: 0 0 auto;
+}
+
+.profile-page footer .container {
+    display: block;
+    flex: none;
+    padding: 0 16px;
+}
+
+.profile-page main {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.profile-page h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 20px;
+}
+
+/* the view sets .pb-3 to a centred flex column; keep it, just don't stretch */
+.profile-page .pb-3 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* The page is a centred column, so the rows need a block of their own to
+   stretch inside - otherwise align-items:center shrinks each one to its
+   text. */
+.profile-shell {
+    width: 100%;
+    max-width: 560px;
+}
+
+.profile-shell h2 {
+    margin-bottom: 6px;
+}
+
+/* The avatar is the value of its row, so the row must not clip it against
+   .settings-value's single-line ellipsis. The shared min-height keeps both
+   rows the same height: 40px of avatar plus the row's own padding is exactly
+   what the taller of the two needs. */
+.profile-shell .settings-row {
+    min-height: 70px;
+}
+
+.profile-shell .settings-value {
+    overflow: visible;
+    white-space: normal;
+}
+
+.profile-shell .avatar-img {
+    width: 40px !important;
+    height: 40px !important;
+    display: block;
+}
+
+.avatar-img {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 0 !important;
+    /* no ring - the avatar art is round already, and a border here read as a
+       grey outline against the card */
+    border: none !important;
+    background: transparent;
+}
+
+.close-edit-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-dim);
+    /* the markup is a literal capital "X"; hide it and draw the cross from two
+       bars instead. A text glyph carries its own side bearings and sits above
+       the baseline, so it never lands dead centre in the hover square - two
+       absolutely-centred bars are exact by construction. */
+    font-size: 0;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+.close-edit-btn::before,
+.close-edit-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 13px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.close-edit-btn::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close-edit-btn::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.close-edit-btn:hover {
+    background: rgba(220, 53, 69, .18);
+    color: var(--danger);
+}
+
+/* ------------------------------------------------------------ responsive -- */
+@media (max-width: 560px) {
+    .auth-page .col-md-4 {
+        padding: 26px 20px;
+        border-radius: 16px;
+    }
+
+    /* The label column is sized for "PASSWORD"; on a narrow card it can give
+       ground so the value and the Change button still fit on one line. */
+    .profile-shell .settings-label,
+    .settings-page .settings-label {
+        flex: 0 0 auto;
+    }
+
+    .avatar-grid {
+        max-height: 190px;
+    }
+}
+
+/* =========================================================================
+   FORGOTTEN PASSWORD
+   One panel on the login page rather than three separate pages: ask for a
+   code, prove you got it, choose a new password. Only one step is on screen
+   at a time, and the panel swaps places with the sign-in form.
+   ========================================================================= */
+/* Remember me on the left, the forgotten-password link on the right, on one
+   line - they are the two small choices under the password field. */
+.login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.login-options .form-label {
+    margin-bottom: 0;
+}
+
+/* A button, not an anchor - there is nowhere to navigate to, and an <a href="#">
+   would put a stray hash in the address bar. Styled like a link because that
+   is what it reads as. */
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--pink-soft, #ff69b4);
+    font-size: 14px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color .18s ease;
+}
+
+.link-button:hover {
+    color: var(--pink, #ff1493);
+}
+
+.reset-panel h2 {
+    margin-bottom: 0;
+}
+
+.reset-step .form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--text-dim, #9a9aa8);
+}
+
+/* Six digits, spaced out so they can be read back against the email. */
+.reset-code-input {
+    text-align: center;
+    font-size: 26px;
+    letter-spacing: 10px;
+    font-weight: 600;
+    padding-left: 10px;      /* the tracking pads the right, not the left */
+}
+
+/* Resend on the left, back to sign in on the right - one row, the same shape
+   as the options row on the sign-in form. The resend button is only there on
+   the code step, and space-between then leaves "Back to sign in" on the
+   right where it belongs. */
+.reset-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.reset-footer .link-button[hidden] {
+    display: none;      /* [hidden] loses to the flex display without this */
+}
+
+/* Pushed right by its own margin rather than by space-between, so it stays
+   in the same place on the steps where there is nothing to its left. */
+.reset-footer #backToLogin {
+    margin-left: auto;
+}
+
+.reset-message {
+    margin: 0 0 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 1px;
+}
+
+.reset-message:empty {
+    margin: 0;
+}
+
+.reset-message.good {
+    color: var(--pink-soft, #ff69b4);
+}
+
+.reset-message.bad {
+    color: #ff6b7a;
+}
+
+/* Confirmation shown on the sign-in form once the password has changed. */
+.reset-done {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 20, 147, .12);
+    border: 1px solid rgba(255, 20, 147, .35);
+    color: var(--pink-soft, #ff69b4);
+    font-size: 14px;
+}
+
+/* =========================================================================
+   SETTINGS
+   Two rows - the address, and the password - each with a panel that folds
+   out below it. The password is never displayed: it is not stored in a form
+   anything can read back, only replaced.
+   ========================================================================= */
+/* The page fills the window: sections down the left, one pane at a time on
+   the right. It keeps the profile shell - background, sticky footer - and
+   only widens the content. The earlier version zeroed the padding on EVERY
+   .container, including the footer's, which is what shoved the copyright
+   line against the left edge. */
+body.settings-page > .container {
+    align-items: flex-start;     /* the profile card is centred; this fills */
+    padding: 30px 16px 48px;
+}
+
+.settings-page main {
+    max-width: 1180px;
+}
+
+/* the profile view centres its card in a flex column - settings is a plain
+   block, or the shell cannot stretch */
+.settings-page .pb-3 {
+    display: block;
+    align-items: stretch;
+}
+
+.settings-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    min-height: calc(100vh - 230px);
+}
+
+.settings-nav {
+    flex: 0 0 216px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 14px 8px 0;
+    border-right: 1px solid var(--line, #1c1c22);
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 11px 13px;
+    border: none;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-dim, #9a9aa8);
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease;
+}
+
+.settings-nav-item svg {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.settings-nav-item:hover {
+    background: var(--raised, #18181d);
+    color: var(--text, #f2f2f5);
+}
+
+.settings-nav-item.active {
+    background: var(--pink-dim, rgba(255, 20, 147, .16));
+    color: var(--pink-soft, #ff69b4);
+}
+
+.settings-nav-item.danger {
+    margin-top: auto;      /* pinned to the bottom, away from the rest */
+    color: #ff6b7a;
+}
+
+.settings-nav-item.danger:hover,
+.settings-nav-item.danger.active {
+    background: rgba(220, 53, 69, .16);
+    color: #ff6b7a;
+}
+
+.settings-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 0 40px 30px;
+}
+
+.settings-pane {
+    display: none;
+}
+
+.settings-pane.active {
+    display: block;
+}
+
+.settings-pane h2 {
+    margin-bottom: 6px;
+}
+
+.settings-lead {
+    max-width: 620px;
+    margin-bottom: 22px;
+    color: var(--text-dim, #9a9aa8);
+    font-size: 14.5px;
+    line-height: 1.5;
+}
+
+.settings-hint {
+    margin: 10px 0 0;
+    color: var(--text-dim, #9a9aa8);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* --- the on/off switch --------------------------------------------------- */
+.switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 26px;
+    cursor: pointer;
+}
+
+.switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+}
+
+.switch-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--raised-hi, #222228);
+    border: 1px solid var(--line, #1c1c22);
+    transition: background .18s ease, border-color .18s ease;
+    pointer-events: none;
+}
+
+.switch-track::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-dim, #9a9aa8);
+    transform: translateY(-50%);
+    transition: transform .18s ease, background .18s ease;
+}
+
+.switch input:checked + .switch-track {
+    background: var(--pink-dim, rgba(255, 20, 147, .16));
+    border-color: rgba(255, 20, 147, .55);
+}
+
+.switch input:checked + .switch-track::after {
+    background: var(--pink, #ff1493);
+    transform: translate(20px, -50%);
+}
+
+.settings-toggle-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.settings-toggle-title {
+    font-size: 15px;
+}
+
+.settings-toggle-sub {
+    margin-top: 2px;
+    color: var(--text-dim, #9a9aa8);
+    font-size: 13px;
+}
+
+/* --- blocked people ------------------------------------------------------ */
+.blocked-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: var(--surface, #050507);
+    border: 1px solid var(--line, #1c1c22);
+}
+
+.blocked-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.blocked-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-empty {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px dashed var(--line, #1c1c22);
+    color: var(--text-dim, #9a9aa8);
+    font-size: 14px;
+    text-align: center;
+}
+
+/* --- closing the account ------------------------------------------------- */
+.danger-panel {
+    border-color: rgba(220, 53, 69, .4);
+}
+
+.btn-danger-solid {
+    background: rgba(220, 53, 69, .18) !important;
+    border: 1px solid rgba(220, 53, 69, .5) !important;
+    color: #ff6b7a !important;
+    border-radius: 10px;
+    padding: 9px 18px;
+    transition: background .18s ease, color .18s ease;
+}
+
+.btn-danger-solid:hover {
+    background: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+@media (max-width: 780px) {
+    .settings-shell {
+        flex-direction: column;
+        padding: 0 14px;
+    }
+
+    .settings-nav {
+        flex: 0 0 auto;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0 0 10px;
+        border-right: none;
+        border-bottom: 1px solid var(--line, #1c1c22);
+    }
+
+    .settings-nav-item {
+        flex: 0 0 auto;
+    }
+
+    .settings-nav-item.danger {
+        margin-top: 0;
+        margin-left: auto;
+    }
+
+    .settings-content {
+        padding: 18px 0 40px;
+    }
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+}
+
+.settings-label {
+    flex: 0 0 84px;
+    color: var(--text-dim, #9a9aa8);
+    font-size: 13px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.settings-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+}
+
+.settings-panel {
+    padding: 16px;
+    margin: -4px 0 14px;
+    border-radius: 14px;
+    background: var(--panel, #0b0b0e);
+    border: 1px solid var(--line, #1c1c22);
+}
+
+.settings-panel .form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.settings-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+/* The action on the left, the way out on the right - never stacked. */
+.settings-panel-actions .link-button {
+    margin-left: auto;
+}
+
+/* The address the account is about to move to, on the confirmation step. */
+.settings-target {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: var(--text-dim, #9a9aa8);
+}
+
+.settings-target strong {
+    color: var(--text, #f2f2f5);
+}
+
+.settings-message {
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.settings-message:empty {
+    margin: 0;
+}
+
+.settings-message.good {
+    color: var(--pink-soft, #ff69b4);
+}
+
+.settings-message.bad {
+    color: #ff6b7a;
+}
+
+.settings-done {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 20, 147, .12);
+    border: 1px solid rgba(255, 20, 147, .35);
+    color: var(--pink-soft, #ff69b4);
+    font-size: 14px;
+}
+
+/* =========================================================================
+   MODALS
+   Centred over a dimmed page. They take no space in the layout, so opening
+   one no longer pushes the card - or the footer - around.
+   ========================================================================= */
+.app-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    /* No fill of its own. The dimming is painted by the dialog's own spread
+       shadow instead (see .app-modal-dialog), which covers the viewport
+       EXCEPT the dialog. Otherwise the dim sits behind the dialog as well, the
+       dialog becomes glass over 66% black, and no amount of lowering its alpha
+       makes it look like anything but black. It still fills the screen so a
+       click on the backdrop closes it. */
+    background: transparent;
+    opacity: 0;
+    transition: opacity .24s ease;
+}
+
+.app-modal.open {
+    opacity: 1;
+}
+
+/* [hidden] has to beat the flex display */
+.app-modal[hidden] {
+    display: none;
+}
+
+.app-modal-dialog {
+    width: min(520px, 100%);
+    /* percentage, not 100vh: while a keyboard is up the overlay is resized to
+       the visible strip, and the dialog has to fit that strip instead */
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 24px;
+    border-radius: 18px;
+    background: var(--glass-dialog);
+    -webkit-backdrop-filter: blur(var(--glass-dialog-blur));
+    backdrop-filter: blur(var(--glass-dialog-blur));
+    border: 1px solid var(--glass-line);
+    /* The first shadow IS the backdrop dim: a huge spread paints everywhere
+       except the dialog's own rounded box, so the page darkens around it while
+       the dialog itself still sits on the undimmed page. That is what lets its
+       glass show the pattern instead of showing 66% black.
+       The second is the ordinary lift under the card. */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55),
+                0 24px 60px rgba(0, 0, 0, .6);
+    /* rises and settles rather than appearing */
+    transform: translateY(14px) scale(.97);
+    opacity: 0;
+    transition: transform .26s cubic-bezier(.22, .61, .36, 1), opacity .22s ease;
+}
+
+.app-modal.open .app-modal-dialog {
+    transform: none;
+    opacity: 1;
+}
+
+.app-modal-title {
+    margin: 0 0 18px;
+    font-size: 19px;
+    font-weight: 700;
+}
+
+/* the page behind a dialog must not scroll */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* inside a dialog the panel is the dialog - no card of its own */
+.app-modal .settings-panel {
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-modal,
+    .app-modal-dialog {
+        transition: none;
+    }
+}
+
+/* --- the avatar picker ---------------------------------------------------- */
+.avatar-grid {
+    max-height: 232px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--surface, #050507);
+    border: 1px solid var(--line, #1c1c22);
+}
+
+.avatar-option {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    /* transparent rather than none, so selecting one does not shift the grid */
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color .16s ease, transform .16s ease;
+}
+
+.avatar-option:hover {
+    border-color: var(--line, #1c1c22);
+    transform: translateY(-1px);
+}
+
+/* the one they already have, marked when the picker opens */
+.avatar-option.selected {
+    border-color: var(--pink, #ff1493);
+    box-shadow: 0 0 0 3px rgba(255, 20, 147, .22);
+}
+
+/* --- six-digit code, one box per digit ----------------------------------- */
+.code-boxes {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.code-box {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
+    height: 56px;
+    padding: 0;
+    border-radius: 12px;
+    background: var(--raised, #18181d);
+    border: 1.5px solid var(--line, #1c1c22);
+    color: var(--text, #f2f2f5);
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    /* no blinking caret: the box that is lit IS the cursor */
+    caret-color: transparent;
+    transition: border-color .16s ease, background .16s ease;
+}
+
+/* Empty and waiting for you: white. The pink is reserved for a digit that
+   has actually landed, so the row reads as progress rather than decoration. */
+.code-box:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, .85);
+}
+
+/* a digit has landed */
+.code-box.filled {
+    border-color: var(--pink, #ff1493);
+    background: rgba(255, 20, 147, .07);
+}
+
+.code-box.filled:focus {
+    border-color: var(--pink, #ff1493);
+}
+
+/* --- a code that was not right ------------------------------------------- */
+.code-boxes.error .code-box,
+.code-boxes.error .code-box.filled {
+    border-color: #ff4d5e;
+    background: rgba(220, 53, 69, .12);
+}
+
+.code-boxes.error {
+    animation: codeShake .42s cubic-bezier(.36, .07, .19, .97);
+}
+
+@keyframes codeShake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(4px); }
+    30%, 50%, 70% { transform: translateX(-7px); }
+    40%, 60% { transform: translateX(7px); }
+    100% { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .code-boxes.error {
+        animation: none;
+    }
+}
+
+@media (max-width: 420px) {
+    .code-boxes {
+        gap: 7px;
+    }
+
+    .code-box {
+        height: 50px;
+        font-size: 21px;
+    }
+}
+
+/* =========================================================================
+   ARRIVALS
+   A short fade-and-rise when a page paints, so moving between Profile,
+   Settings and the sign-in screens does not feel like a series of jolts.
+   Deliberately slight: 240ms and six pixels.
+   ========================================================================= */
+@keyframes pageIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* "backwards", not "both", and it matters. An element whose transform is
+   animated becomes the containing block for its position:fixed descendants,
+   and with fill-mode "both" the animation stays in effect for ever after it
+   ends - so a centred dialog inside one of these was being centred inside
+   the element rather than the window. On the settings page, where the pane
+   is only as tall as its own content, that parked every dialog near the top
+   of the screen. "backwards" still hides the first frame, then lets go. */
+.auth-page main,
+.profile-page main {
+    animation: pageIn .24s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+
+/* the settings panes swap without a reload, so they get the same entrance */
+.settings-pane.active {
+    animation: pageIn .2s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+
+/* Belt and braces for the one case "backwards" cannot cover: a dialog opened
+   while the entrance is still playing - the profile page opens one straight
+   away when a save comes back with errors. */
+body.modal-open main,
+body.modal-open .settings-pane,
+body.modal-open .settings-pane.active {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-page main,
+    .profile-page main,
+    .settings-pane.active,
+    .user-menu-anchor .dropdown-menu {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* =========================================================================
+   SETTINGS ON A NARROW SCREEN
+   The nav stays a rail down the side rather than becoming a row of chips
+   above the content: the shape of the page holds, and the content still
+   gets the width it needs.
+   ========================================================================= */
+@media (max-width: 780px) {
+    .settings-shell {
+        flex-direction: row;
+    }
+
+    .settings-nav {
+        flex: 0 0 62px;
+        flex-direction: column;
+        overflow: visible;
+        padding: 4px 8px 4px 0;
+        border-right: 1px solid var(--line, #1c1c22);
+        border-bottom: none;
+    }
+
+    /* icons only - the labels would not fit and would wrap */
+    .settings-nav-item {
+        justify-content: center;
+        padding: 12px 0;
+    }
+
+    .settings-nav-item span {
+        display: none;
+    }
+
+    .settings-nav-item svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    .settings-nav-item.danger {
+        margin-top: auto;
+        margin-left: 0;
+    }
+
+    .settings-content {
+        padding: 2px 0 32px 16px;
+    }
+
+    .settings-row {
+        gap: 10px;
+        padding: 12px 13px;
+    }
+
+    .settings-label {
+        flex-basis: 62px;
+        font-size: 11.5px;
+    }
+}
+
+/* On a phone the label and the value fight for the same line and the email
+   ends up as "gela@g...". Stacking gives the value the full width. */
+@media (max-width: 480px) {
+    .settings-row {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    .settings-label {
+        flex: 1 1 100%;
+    }
+
+    .settings-value {
+        flex: 1 1 auto;
+        font-size: 14.5px;
+    }
+}

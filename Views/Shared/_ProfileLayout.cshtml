@@ -1,0 +1,82 @@
+﻿@*
+    Views/Shared/_ProfileLayout.cshtml
+    A clean layout used ONLY by the Profile page.
+*@
+<!DOCTYPE html>
+<html lang="en" class="@ViewData["PageClass"]">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ChatApp</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ChatApp.styles.css" asp-append-version="true" />
+
+    <style>
+        .profile-item {
+            border: 1px solid #1e1e1e;
+            width: 100%;
+            text-align: start;
+        }
+
+            .profile-item:hover {
+                background-color: #1e1e1e;
+            }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+<body class="@ViewData["PageClass"]">
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ChatApp</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- keep the same top-right dropdown -->
+    <div class="user-menu-anchor">
+        <ul class="navbar-nav flex-grow-1">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
+                   data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="Account"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                        <path d="M12 12.2a4.6 4.6 0 1 0 0-9.2 4.6 4.6 0 0 0 0 9.2zm0 2c-4.1 0-7.6 2.1-7.6 4.7V21h15.2v-2.1c0-2.6-3.5-4.7-7.6-4.7z" />
+                    </svg></a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                    <li><a class="btn profile-item" style="text-decoration: none; cursor: pointer; color: white; font-size: 20px; padding: 8px;" href="/Identity/Account/Manage/Profile">Profile</a></li>
+                    <li><a class="btn profile-item" style="text-decoration: none; cursor: pointer; color: white; font-size: 20px; padding: 8px;" href="/Identity/Account/Manage/Settings">Settings</a></li>
+                    <li class="nav-item">
+                        <form id="logoutForm" asp-area="" asp-controller="Home" asp-action="Logout" method="post" class="form-inline">
+                            <button type="submit" class="btn text-danger profile-item" style="cursor: pointer; font-size: 20px; padding: 8px;">
+                                Log out
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </li>
+            }
+        </ul>
+    </div>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; @DateTime.Now.Year - ChatApp - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

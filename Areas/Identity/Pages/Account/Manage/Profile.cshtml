@@ -1,0 +1,151 @@
+﻿@page
+@model ChatApp.Areas.Identity.Pages.Account.Manage.ProfileModel
+@{
+    ViewData["PageClass"] = "profile-page";
+    Layout = "~/Views/Shared/_ProfileLayout.cshtml";
+    ViewData["Title"] = "Profile";
+}
+
+@* Same shape as Settings: a heading, a line of context, then one row per
+   thing you can change. The rows and the edit dialog reuse the settings
+   classes outright so the two pages cannot drift apart. *@
+<div class="profile-shell">
+    <h2>@ViewData["Title"]</h2>
+    <p class="settings-lead">How you appear to everyone else in ChatApp.</p>
+
+    <div class="settings-row">
+        <div class="settings-label">Nickname</div>
+        <div class="settings-value" id="currentNickname">@Model.Nickname</div>
+        <button type="button" class="btn btn-sm btn-outline-light edit-profile-btn" data-edit="nickname">Change</button>
+    </div>
+
+    <div class="settings-row">
+        <div class="settings-label">Avatar</div>
+        <div class="settings-value">
+            <img src="@Model.AvatarUrl" alt="Your avatar" class="avatar-img" />
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light edit-profile-btn" data-edit="avatar">Change</button>
+    </div>
+</div>
+
+<!-- Edit form, as a dialog over the page -->
+<div id="editProfileOverlay" class="app-modal" hidden>
+    <div class="app-modal-dialog">
+        <h3 class="app-modal-title" id="editProfileTitle">Edit your profile</h3>
+
+        @* Both fields always post, so whichever one is hidden simply carries its
+           current value through unchanged and the handler stays as it is. *@
+        <form method="post" enctype="multipart/form-data" asp-page-handler="UpdateProfile" class="settings-panel">
+            <div class="edit-field" data-field="nickname">
+                <label class="form-label" asp-for="Input.Nickname">Nickname</label>
+                <input asp-for="Input.Nickname" class="form-control" placeholder="Nickname" autocomplete="nickname" />
+                <span asp-validation-for="Input.Nickname" class="text-danger"></span>
+            </div>
+
+            <div class="edit-field" data-field="avatar">
+                <label class="form-label">Choose an avatar</label>
+                <div id="avatarSelection" class="avatar-grid d-flex flex-wrap gap-2">
+                    @for (int i = 1; i <= 20; i++)
+                    {
+                        var avatarPath = $"/images/avatars/bot{i}.png";
+                        <img src="@Url.Content(avatarPath)"
+                             class="avatar-option"
+                             data-value="@avatarPath"
+                             alt="Avatar option @i" />
+                    }
+                </div>
+                <span asp-validation-for="Input.AvatarUrl" class="text-danger"></span>
+            </div>
+
+            @* outside both blocks: it must post whichever field is on screen *@
+            <input type="hidden" asp-for="Input.AvatarUrl" id="selectedAvatar" />
+
+            <div class="settings-panel-actions">
+                <button type="submit" id="saveProfileBtn" class="btn btn-change">Save changes</button>
+                <button type="button" id="closeEditFormBtn" class="link-button">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const editOverlay = document.getElementById("editProfileOverlay");
+        const editTitle = document.getElementById("editProfileTitle");
+        const saveBtn = document.getElementById("saveProfileBtn");
+        const nicknameInput = document.getElementById("Input_Nickname");
+        const hiddenInput = document.getElementById("selectedAvatar");
+        const fields = Array.from(document.querySelectorAll(".edit-field"));
+
+        // What the account looks like right now. Both fields always post, so a
+        // dialog that only shows one of them has to send the other back
+        // untouched - and a cancelled edit must not leak into the next one.
+        const original = { nickname: nicknameInput.value, avatar: hiddenInput.value };
+
+        const WORDING = {
+            nickname: { title: "Change your nickname", save: "Save nickname" },
+            avatar: { title: "Change your avatar", save: "Save avatar" }
+        };
+
+        function openEdit(what) {
+            // start from the saved state every time, whatever the last dialog did
+            nicknameInput.value = original.nickname;
+            hiddenInput.value = original.avatar;
+            markSelected(original.avatar);
+
+            editTitle.textContent = WORDING[what].title;
+            saveBtn.textContent = WORDING[what].save;
+            fields.forEach(field => { field.hidden = field.dataset.field !== what; });
+
+            openModal(editOverlay);
+
+            requestAnimationFrame(() => {
+                if (what === "nickname") {
+                    nicknameInput.focus();
+                    nicknameInput.select();
+                    return;
+                }
+                // The grid scrolls, and their avatar may be below the fold.
+                // Nothing can be scrolled into view until the dialog has been
+                // laid out, hence the frame's delay.
+                const chosen = document.querySelector(".avatar-option.selected");
+                if (chosen) chosen.scrollIntoView({ block: "nearest" });
+            });
+        }
+
+        document.querySelectorAll(".edit-profile-btn").forEach(button => {
+            button.addEventListener("click", () => openEdit(button.dataset.edit));
+        });
+
+        document.getElementById("closeEditFormBtn")
+            .addEventListener("click", () => closeModal(editOverlay));
+
+        // Avatar selection
+        const avatars = Array.from(document.querySelectorAll(".avatar-option"));
+
+        // Marks whichever tile matches `value`, so the picker opens showing the
+        // avatar the person already has rather than twenty strangers.
+        function markSelected(value) {
+            avatars.forEach(avatar => {
+                avatar.classList.toggle("selected", avatar.getAttribute("data-value") === value);
+            });
+        }
+
+        avatars.forEach(avatar => {
+            avatar.addEventListener("click", () => {
+                hiddenInput.value = avatar.getAttribute("data-value");
+                markSelected(hiddenInput.value);
+            });
+        });
+
+        markSelected(original.avatar);
+
+        // Auto-open if the server told us to - a failed save comes back with the
+        // form open. That is the state the page loads in, not something the
+        // reader just did.
+        const editModeFromServer = '@(ViewData["EditMode"] ?? "false")';
+        if (editModeFromServer.toString().toLowerCase() === "true") {
+            openEdit("nickname");
+        }
+    </script>
+}

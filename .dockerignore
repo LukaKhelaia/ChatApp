@@ -1,0 +1,15 @@
+# Keep the build context small and never ship local build output or secrets
+.git
+.gitignore
+.vs
+bin
+obj
+**/bin
+**/obj
+Dockerfile
+.dockerignore
+*.md
+appsettings.Development.json
+appsettings.Production.json
+.env
+.env.*

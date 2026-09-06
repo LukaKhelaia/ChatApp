@@ -1,0 +1,21 @@
+/* Scoped styles for _Layout.cshtml.
+
+   These compile into ChatApp.styles.css as .selector[b-xxxxxxxxxx], which
+   outranks the same selector in site.css. The stock ASP.NET template shipped
+   light-theme defaults in here that quietly overrode the site theme:
+
+     .footer { position: absolute; bottom: 0; line-height: 60px }
+         -> pinned the footer over the page content instead of after it
+     .border-top / .border-bottom { 1px solid #e5e5e5 }
+         -> the near-white divider under the navbar
+     a { color: #0077cc }  and  .btn-primary { background: #1b6ec2 }
+         -> blue links and buttons fighting the pink accent
+
+   All removed. Layout and colour now live in site.css / chat.css, where the
+   theme is defined in one place. */
+
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
